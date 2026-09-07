@@ -1,0 +1,42 @@
+{
+  "_aciklama": "discord-dpi-bridge ayarlari. install.ps1 bu dosyayi okur; relay.py 'socks', 'doh' ve 'routes' alanlarini kullanir.",
+
+  "socks": { "host": "127.0.0.1", "port": 1080 },
+
+  "byedpi": {
+    "_aciklama": "ByeDPI (ciadpi.exe) desync parametreleri. Operatore gore degisebilir; calismazsa https://github.com/hufrea/byedpi README'sine bak.",
+    "args": "--split 1 --disorder 3+s --mod-http=h,d --auto=torst --tlsrec 1+s"
+  },
+
+  "doh": {
+    "_aciklama": "relay.py gercek IP'yi buradan cozer (hosts dosyasini atlamak icin).",
+    "url": "https://1.1.1.1/dns-query",
+    "ttl": 300
+  },
+
+  "dns": {
+    "_aciklama": "Windows DNS over HTTPS ayari. Operator duz DNS'i (53/udp) ele gecirdigi icin gerekli.",
+    "template": "https://cloudflare-dns.com/dns-query",
+    "v4": ["1.1.1.1", "1.0.0.1"],
+    "v6": ["2606:4700:4700::1111", "2606:4700:4700::1001"]
+  },
+
+  "routes": [
+    { "listen": "127.0.0.1", "host": "updates.discord.com", "port": 443 },
+    { "listen": "127.0.0.2", "host": "dl.discordapp.net",   "port": 443 },
+    { "listen": "127.0.0.3", "host": "discord.com",         "port": 443 }
+  ],
+
+  "hosts_entries": {
+    "_aciklama": "Hosts dosyasina yazilacak alan adlari. Sadece proxy'yi KULLANAMAYAN istemcinin gittigi alanlar burada olmali; discord.com bilerek disarida (Chromium tarafi zaten --proxy-server ile gidiyor).",
+    "map": {
+      "updates.discord.com": "127.0.0.1",
+      "dl.discordapp.net": "127.0.0.2"
+    }
+  },
+
+  "discord": {
+    "_aciklama": "Discord kisayollarina ve otomatik baslatma kaydina eklenecek Chromium bayragi.",
+    "proxy_server": "socks5://127.0.0.1:1080"
+  }
+}

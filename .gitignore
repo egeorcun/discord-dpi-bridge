@@ -1,0 +1,11 @@
+# calisma zamani ciktilari
+*.log
+*.log.old
+*.bak
+# indirilen ikili (install.ps1 GitHub'dan ceker)
+byedpi/
+# python
+__pycache__/
+*.pyc
+# kurulum sirasinda uretilen
+dns-backup.json
