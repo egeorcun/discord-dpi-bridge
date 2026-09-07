@@ -149,10 +149,10 @@ Aşağıdakiler bu deponun kendi kaynak dosyaları. `git clone` ile alındıklar
 
 | Dosya | SHA-256 |
 |---|---|
-| `relay.py` | `9160ed3cf13e71c3d979279e7400ed75ab9720c88e4377cec842d302d60ceba8` |
-| `install.ps1` | `5aa1588a88c2dad6e29204ed3c4ad5db5c49db4ad0a0c80716721a9af651b2c0` |
-| `uninstall.ps1` | `c6042baf68d75f7f936a36f21bcb9b1e7ba9d581031ce15bcf3fcefb2508c1b6` |
-| `status.ps1` | `00deae470c8ebaf0d3da8baa46a25bc068904a4a38192e176b2853e27067bd7b` |
+| `relay.ps1` | `54d0f861842fcf18e03825a395056d486c46059c9bc6a17201004eb0e249ef98` |
+| `install.ps1` | `3492f672ca72b996393b321c76a272ae146aa6d10f97601bf532e90b59240c7f` |
+| `uninstall.ps1` | `d3d1d7c07dfbf1da687a8ec65dc1e8e9abd001fe5fba8f7cce17e1a87d8d124a` |
+| `status.ps1` | `a3c07fbb3e49df0f2eb7f5d45e2b556fd9f0520497d6dc08f4bed43b47da4e3f` |
 | `fix-discord.ps1` | `2f195dbca2a222ff97e852f4069ab69f1f98e316f989fe587038bea9053c558e` |
 | `config.json` | `43da260d90a56ff8886e94b5664774241d4d934f61a598db88f4365e31b37c5d` |
 
@@ -160,7 +160,7 @@ Kendi indirdiğin dosyayı doğrulamak için:
 
 ```powershell
 Get-FileHash .\ciadpi.exe -Algorithm SHA256   # ByeDPI ikili — yukaridaki ile karsilastir
-Get-FileHash .\relay.py   -Algorithm SHA256
+Get-FileHash .\relay.ps1  -Algorithm SHA256
 ```
 
 > Not: Bu betikler bu deponun yeni dosyaları; VirusTotal'da henüz taranmamış olabilirler. İstersen kendin yükleyip tarat — hepsi düz metin, gizli bir şey yok. Metin dosyalarının hash'i satır sonu ayarına duyarlıdır; şüphede kalırsan `git clone` ile al ya da dosyayı doğrudan oku. İkili `ciadpi.exe`'nin hash'i satır sonundan etkilenmez, en güvenilir doğrulama noktası odur.
