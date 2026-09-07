@@ -123,6 +123,45 @@ DoH başarısız olursa Windows zehirlenmiş düz DNS'e **geri dönmez** — eng
 **VPN kullansam olmaz mıydı?**
 Olur, ama iki bedeli var: tüm oyun trafiği tünelden geçer (ping artar) ya da split tunneling gerekir — Proton VPN gibi istemcilerin split tunneling'i de WFP callout sürücüsü yüklüyor, o da anti-cheat açısından WinDivert'e benzer risk taşıyor.
 
+## Güvenlik ve doğrulama
+
+- Bu depo **hiçbir ikili (çalıştırılabilir) dosya taşımaz.** Tek ikili olan `ciadpi.exe` (ByeDPI), kurulum sırasında [ByeDPI'nin resmi GitHub sürümünden](https://github.com/hufrea/byedpi/releases) iner; `install.ps1` indirdiği sürümü `byedpi\version.txt`'e yazar. Geri kalan her şey okunabilir kaynak koddur (`.ps1`, `.py`) — indir, aç, oku.
+- **Neden antivirüs "PUA/HackTool" diyor?** ByeDPI bir DPI atlatma aracı olduğu için bazı motorlar onu "Riskware / PUA / HackTool / not-a-virus" diye işaretler. Bu bir **zararlı yazılım tespiti değil, kategori uyarısıdır** — aracın ne yaptığına bakıp koydukları etiket. ByeDPI açık kaynaktır, kodu incelenebilir. Windows Defender `ciadpi.exe`'yi karantinaya alırsa: Windows Güvenliği → Koruma geçmişi → "Cihazda izin ver", sonra `install.ps1`'i tekrar çalıştır.
+
+### VirusTotal — `ciadpi.exe`
+
+Doğrulanan sürüm: **ByeDPI v0.17.3**, `byedpi-17.3-x86_64-w64.zip` içindeki `ciadpi.exe`.
+
+| Alan | Değer |
+|---|---|
+| SHA-256 | `eb53ceeeb981cc6735ac24bb1e51e725280b86630e80fdf19ddc4ee4a5b54ef4` |
+| Boyut | 129 024 bayt |
+| VirusTotal | **https://www.virustotal.com/gui/file/eb53ceeeb981cc6735ac24bb1e51e725280b86630e80fdf19ddc4ee4a5b54ef4** |
+
+> Bağlantı, dosyanın **o an geçerli** VirusTotal taramasını gösterir (oran zamanla değişebilir). DPI araçları için birkaç motorun "PUA/Riskware" işaretlemesi beklenen bir durumdur; önemli olan tespitin türü, sayısı değil. Bu SHA-256, ByeDPI'nin resmi sürümündeki `ciadpi.exe` ile aynıdır — yani üst(upstream) ile birebir doğrulayabilirsin.
+
+### Kaynak dosyalar (bütünlük)
+
+Aşağıdakiler bu deponun kendi kaynak dosyaları. `git clone` ile alındıklarında (satır sonları `.gitattributes` ile sabitlenir: `.ps1` = CRLF, `.py`/`.json` = LF) SHA-256'ları:
+
+| Dosya | SHA-256 |
+|---|---|
+| `relay.py` | `9160ed3cf13e71c3d979279e7400ed75ab9720c88e4377cec842d302d60ceba8` |
+| `install.ps1` | `5aa1588a88c2dad6e29204ed3c4ad5db5c49db4ad0a0c80716721a9af651b2c0` |
+| `uninstall.ps1` | `c6042baf68d75f7f936a36f21bcb9b1e7ba9d581031ce15bcf3fcefb2508c1b6` |
+| `status.ps1` | `00deae470c8ebaf0d3da8baa46a25bc068904a4a38192e176b2853e27067bd7b` |
+| `fix-discord.ps1` | `2f195dbca2a222ff97e852f4069ab69f1f98e316f989fe587038bea9053c558e` |
+| `config.json` | `43da260d90a56ff8886e94b5664774241d4d934f61a598db88f4365e31b37c5d` |
+
+Kendi indirdiğin dosyayı doğrulamak için:
+
+```powershell
+Get-FileHash .\ciadpi.exe -Algorithm SHA256   # ByeDPI ikili — yukaridaki ile karsilastir
+Get-FileHash .\relay.py   -Algorithm SHA256
+```
+
+> Not: Bu betikler bu deponun yeni dosyaları; VirusTotal'da henüz taranmamış olabilirler. İstersen kendin yükleyip tarat — hepsi düz metin, gizli bir şey yok. Metin dosyalarının hash'i satır sonu ayarına duyarlıdır; şüphede kalırsan `git clone` ile al ya da dosyayı doğrudan oku. İkili `ciadpi.exe`'nin hash'i satır sonundan etkilenmez, en güvenilir doğrulama noktası odur.
+
 ## Sınırlar — dürüstçe
 
 - Bu bir **çözüm değil, geçici yol**. Discord istemcisini değiştirdiğinde (yeni bir alan adı, güncelleyicinin davranışı) kırılabilir.
