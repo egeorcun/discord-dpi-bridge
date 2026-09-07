@@ -39,7 +39,7 @@ $cfg     = Get-Content (Join-Path $Root 'config.json') -Raw | ConvertFrom-Json
 
 Step "Surecler ve Startup"
 Get-Process ciadpi -ErrorAction SilentlyContinue | Stop-Process -Force
-Get-CimInstance Win32_Process | Where-Object { $_.Name -match '^python' -and $_.CommandLine -match 'relay\.py' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+Get-CimInstance Win32_Process | Where-Object { ($_.Name -match '^python' -and $_.CommandLine -match 'relay\.py') -or ($_.Name -eq 'powershell.exe' -and $_.CommandLine -match 'relay\.ps1') } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
 if (Test-Path $Startup) { Remove-Item $Startup -Force }
 Ok "durduruldu, Startup girdisi silindi"
 

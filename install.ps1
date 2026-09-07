@@ -101,49 +101,16 @@ else {
   } else { Warn "Kaldirilmadi. Oyun bunlar yukluyken acilmayacaktir." }
 }
 
-# ---------- 2) python ----------
-Step "Python"
-function Find-Python {
-  $cands = @()
-  if (Get-Command py.exe -ErrorAction SilentlyContinue) {
-    try { $p = (& py -3 -c "import sys;print(sys.executable)" 2>$null); if ($p) { $cands += $p.Trim() } } catch {}
-  }
-  foreach ($n in 'python.exe', 'python3.exe') {
-    $c = Get-Command $n -ErrorAction SilentlyContinue
-    if ($c -and $c.Source -notmatch 'WindowsApps') { $cands += $c.Source }
-  }
-  $cands += Get-ChildItem "$env:LOCALAPPDATA\Programs\Python\Python3*\python.exe" -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName }
-  $cands += Get-ChildItem "$env:ProgramFiles\Python3*\python.exe" -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName }
-  foreach ($c in ($cands | Select-Object -Unique)) {
-    if (-not (Test-Path $c)) { continue }
-    try {
-      $v = (& $c -c "import sys;print('%d.%d'%sys.version_info[:2])" 2>$null)
-      if ($v -and ([version]$v.Trim() -ge [version]'3.8')) { return $c }
-    } catch {}
-  }
-  return $null
-}
-$python = Find-Python
-if (-not $python) {
-  Warn "Python 3.8+ bulunamadi (kopru icin gerekli)."
-  if (Get-Command winget.exe -ErrorAction SilentlyContinue) {
-    if (Ask "winget ile Python 3.12 kurayim mi? (sadece bu kullanici icin, ~25 MB)") {
-      Act "winget install Python.Python.3.12" { & winget install -e --id Python.Python.3.12 --scope user --silent --accept-package-agreements --accept-source-agreements | Out-Null } | Out-Null
-      $python = Find-Python
-    }
-  } else { Info "https://www.python.org/downloads/windows/ adresinden kur, sonra tekrar calistir." }
-  if (-not $python -and -not $DryRun) { Fail "Python yok, devam edilemiyor."; exit 1 }
-}
-if ($python) {
-  $pythonw = Join-Path (Split-Path $python) 'pythonw.exe'
-  if (-not (Test-Path $pythonw)) { $pythonw = $python }
-  Ok "Python: $python"
-} else { $pythonw = 'pythonw.exe' }
+# ---------- 2) PowerShell (yerlesik, bagimlilik yok) ----------
+Step "Calisma ortami"
+$psexe = Join-Path $env:WINDIR 'System32\WindowsPowerShell\v1.0\powershell.exe'
+if (-not (Test-Path $psexe)) { $psexe = 'powershell.exe' }
+Ok "Kopru yerlesik Windows PowerShell ile calisir (Python/harici bagimlilik yok): $psexe"
 
 # ---------- 3) dosyalar + ByeDPI ----------
 Step "Dosyalar ve ByeDPI"
 Act "Klasor: $Install" { New-Item -ItemType Directory -Force -Path $Install, (Join-Path $Install 'byedpi') | Out-Null } | Out-Null
-foreach ($f in 'relay.py', 'config.json') {
+foreach ($f in 'relay.ps1', 'config.json') {
   Act "kopyala $f" { Copy-Item (Join-Path $Root $f) (Join-Path $Install $f) -Force } | Out-Null
 }
 $ciadpi = Join-Path $Install 'byedpi\ciadpi.exe'
@@ -246,12 +213,13 @@ base = "$Install\"
 sh.CurrentDirectory = base
 sh.Run """" & base & "byedpi\ciadpi.exe"" -i $($cfg.socks.host) -p $($cfg.socks.port) $($cfg.byedpi.args)", 0, False
 WScript.Sleep 1500
-sh.Run """$pythonw"" """ & base & "relay.py"" """ & base & "config.json""", 0, False
+sh.Run "$psexe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File """ & base & "relay.ps1"" """ & base & "config.json""", 0, False
 "@
 Act "Startup: $Startup" { Set-Content -Path $Startup -Value $vbs -Encoding ASCII } | Out-Null
 Act "eski ciadpi/relay sureclerini durdur" {
   Get-Process ciadpi -ErrorAction SilentlyContinue | Stop-Process -Force
-  Get-CimInstance Win32_Process | Where-Object { $_.Name -match '^python' -and $_.CommandLine -match 'relay\.py' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+  # eski Python koprusu (varsa) + yeni PowerShell koprusu
+  Get-CimInstance Win32_Process | Where-Object { ($_.Name -match '^python' -and $_.CommandLine -match 'relay\.py') -or ($_.Name -eq 'powershell.exe' -and $_.CommandLine -match 'relay\.ps1') } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
   Start-Sleep -Seconds 1
 } | Out-Null
 Act "simdi baslat (wscript)" { Start-Process wscript.exe -ArgumentList "`"$Startup`""; Start-Sleep -Seconds 4 } | Out-Null

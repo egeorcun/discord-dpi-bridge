@@ -26,7 +26,7 @@ Bu yüzden dört parça var:
  Discord (Chromium) ─┤ --proxy-server=socks5://127.0.0.1:1080        │
                      │        │                                       │
  Discord updater ────┤ hosts: updates.discord.com → 127.0.0.1:443    │
-                     │        │  relay.py (TCP→SOCKS5 köprüsü)        │
+                     │        │  relay.ps1 (TCP→SOCKS5 köprüsü)       │
                      │        ▼                                       │
                      │   ByeDPI (ciadpi.exe) SOCKS5, kullanıcı alanı  │──▶ internet
                      │                                                │
@@ -36,7 +36,7 @@ Bu yüzden dört parça var:
 ```
 
 1. **ByeDPI** — DPI atlatmayı kullanıcı alanında yapan yerel SOCKS5 proxy. Sürücü yok.
-2. **relay.py** — Proxy kullanamayan güncelleyici için köprü. hosts dosyası `updates.discord.com`'u `127.0.0.1`'e yönlendirir; köprü o portu dinler ve bağlantıyı ByeDPI üzerinden gerçek sunucuya taşır. TLS'e dokunmaz, sertifika doğrulaması olduğu gibi kalır.
+2. **relay.ps1** — Proxy kullanamayan güncelleyici için köprü. **Windows'ta yerleşik gelen PowerShell ile yazıldı; Python veya başka bir bağımlılık gerektirmez.** hosts dosyası `updates.discord.com`'u `127.0.0.1`'e yönlendirir; köprü o portu dinler ve bağlantıyı ByeDPI üzerinden gerçek sunucuya taşır. TLS'e dokunmaz, sertifika doğrulaması olduğu gibi kalır.
 3. **DNS over HTTPS** — Operatör düz DNS sorgularını şeffaf şekilde ele geçirip engel sayfası IP'si (`195.175.254.2`) döndürüyor; `1.1.1.1` yazmak yetmiyor. DoH bunu bitirir.
 4. **Discord bayrağı** — Kısayollara ve "Windows ile başlat" kaydına `--proxy-server` eklenir.
 
@@ -45,7 +45,7 @@ Hepsi yeniden başlatmada kendiliğinden gelir (Startup klasöründe bir `.vbs`)
 ## Gereksinimler
 
 - Windows 10 21H2+ / Windows 11 (DoH desteği için)
-- Python 3.8+ (yoksa kurulum betiği winget ile kurmayı teklif eder)
+- **Başka hiçbir şey yok** — köprü Windows'ta yerleşik gelen PowerShell 5.1 ile çalışır. Python veya harici kurulum gerekmez.
 - Yönetici yetkisi — sadece kurulumda (hosts + DNS için); çalışma zamanında hiçbir şey yönetici değildir
 
 ## Kurulum
@@ -59,7 +59,7 @@ powershell -ExecutionPolicy Bypass -File .\install.ps1
 UAC penceresini onayla. Betik sırayla:
 
 1. GoodbyeDPI / WinDivert bulursa **sorar** ve kaldırır (klasörüne dokunmaz, sadece Windows servisini siler)
-2. Python'u kontrol eder
+2. Çalışma ortamını doğrular (yerleşik PowerShell — kurulacak bir şey yok)
 3. ByeDPI'yi GitHub'dan indirir (`%LOCALAPPDATA%\discord-dpi-bridge\byedpi\`)
 4. DoH'u açar, DNS'i Cloudflare yapar (eskisini `dns-backup.json`'a yedekler)
 5. hosts dosyasına yazar (yedek: `hosts.discord-dpi-bridge.bak`)
@@ -110,6 +110,9 @@ Normal. `nslookup` ham UDP gönderir, DoH kullanmaz. Doğru kontrol: `Resolve-Dn
 
 **Discord açılıyor ama bazı şeyler yüklenmiyor / ses yok.**
 Ses (UDP) proxy'den geçmez, doğrudan gider; genelde bu sorun olmaz çünkü engel alan adı bazlı. Çalışmıyorsa `config.json` → `byedpi.args`'ı operatörüne göre ayarlamak gerekebilir ([ByeDPI README](https://github.com/hufrea/byedpi)).
+
+**Python gerekiyor mu?**
+Hayır. Köprü (`relay.ps1`) Windows'ta yerleşik gelen PowerShell 5.1 ile yazıldı; hiçbir ek çalışma ortamı kurman gerekmez. (Eski sürümlerde `relay.py` vardı; artık kaldırıldı.)
 
 **Bu ayarlar hangi operatörde çalışır?**
 Varsayılan `byedpi.args` Türk Telekom'da test edildi. Farklı operatörde ByeDPI parametrelerini değiştirmen gerekebilir; DoH ve köprü kısmı operatörden bağımsızdır.
@@ -166,7 +169,7 @@ Get-FileHash .\relay.py   -Algorithm SHA256
 
 - Bu bir **çözüm değil, geçici yol**. Discord istemcisini değiştirdiğinde (yeni bir alan adı, güncelleyicinin davranışı) kırılabilir.
 - Chromium tarafı ECH (şifreli SNI) + DoH ile bazen proxy'siz de bağlanabiliyor; buna güvenilmedi çünkü operatör istediği an ECH'i kesebilir.
-- `relay.py` yalnızca IPv4 hedefleri çözer.
+- `relay.ps1` yalnızca IPv4 hedefleri çözer.
 - DPI atlatma araçlarının hukuki durumu ülkeye göre değişir. Bu araç bir iletişim uygulamasına erişmek içindir; yerel mevzuat ve hizmet şartlarına uyum kullanıcının sorumluluğundadır.
 
 ## Teşekkür
@@ -187,10 +190,10 @@ MIT. ByeDPI ayrı lisanslıdır (MIT) ve kurulumda ayrıca indirilir; bu depoda 
 **What this does.** Reaches Discord with **no kernel driver at all**, so the game and Discord run side by side:
 
 1. **ByeDPI** — user-space SOCKS5 proxy doing the DPI desync.
-2. **relay.py** — Discord's updater is a separate Rust/`reqwest` client that ignores every proxy setting (Chromium flag, `HTTPS_PROXY`, `settings.json`). So `hosts` points `updates.discord.com` at a loopback address, and this bridge forwards that TCP connection through ByeDPI to the real server. TLS is untouched; certificate validation stays intact. The bridge resolves the real IP via DoH and hands SOCKS5 an **IP**, not a hostname — otherwise ByeDPI would resolve the hosts entry and loop back into the bridge.
+2. **relay.ps1** — Discord's updater is a separate Rust/`reqwest` client that ignores every proxy setting (Chromium flag, `HTTPS_PROXY`, `settings.json`). So `hosts` points `updates.discord.com` at a loopback address, and this bridge forwards that TCP connection through ByeDPI to the real server. TLS is untouched; certificate validation stays intact. The bridge resolves the real IP via DoH and hands SOCKS5 an **IP**, not a hostname — otherwise ByeDPI would resolve the hosts entry and loop back into the bridge. **Written in built-in Windows PowerShell — no Python or other dependency.**
 3. **DNS over HTTPS** — the ISP transparently hijacks plain port-53 DNS and returns a block-page IP; setting `1.1.1.1` alone doesn't help.
 4. **`--proxy-server`** added to Discord's shortcuts and Run key.
 
-`install.ps1` (self-elevates; `-DryRun` to preview), `status.ps1` (health check, no admin), `fix-discord.ps1` (re-apply flags after a Discord update), `uninstall.ps1` (reverts everything). Config in `config.json`. Requires Windows 10 21H2+/11 and Python 3.8+ (installer offers to install it via winget).
+`install.ps1` (self-elevates; `-DryRun` to preview), `status.ps1` (health check, no admin), `fix-discord.ps1` (re-apply flags after a Discord update), `uninstall.ps1` (reverts everything). Config in `config.json`. Requires only Windows 10 21H2+/11 — the bridge runs on built-in PowerShell 5.1, **no Python or other dependency**.
 
 Tested on Türk Telekom with Denuvo Anti-Cheat (ARC Raiders). Other ISPs may need different `byedpi.args`. This is a workaround, not a fix; it may break when Discord changes its client. Legal status of DPI circumvention varies by country — compliance is the user's responsibility.

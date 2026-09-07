@@ -39,9 +39,9 @@ $l = @(Get-NetTCPConnection -LocalPort $cfg.socks.port -State Listen)
 if ($l.Count -gt 0) { Row $true "port $($cfg.socks.port) dinleniyor" $l[0].LocalAddress } else { Row $false "port $($cfg.socks.port) dinleniyor" 'hayir' }
 
 # --- 3) Kopru
-Write-Host "`nKopru (relay.py)" -ForegroundColor Yellow
-$rp = @(Get-CimInstance Win32_Process | Where-Object { $_.Name -match '^python' -and $_.CommandLine -match 'relay\.py' })
-if ($rp.Count -gt 0) { Row $true 'relay.py sureci' "PID $($rp.ProcessId -join ',')" } else { Row $false 'relay.py sureci' 'calismiyor' }
+Write-Host "`nKopru (relay.ps1)" -ForegroundColor Yellow
+$rp = @(Get-CimInstance Win32_Process | Where-Object { $_.Name -eq 'powershell.exe' -and $_.CommandLine -match 'relay\.ps1' })
+if ($rp.Count -gt 0) { Row $true 'relay.ps1 sureci' "PID $($rp.ProcessId -join ',')" } else { Row $false 'relay.ps1 sureci' 'calismiyor' }
 foreach ($r in $cfg.routes) {
   $lp = $r.port; if ($r.listen_port) { $lp = $r.listen_port }
   $ok = @(Get-NetTCPConnection -LocalAddress $r.listen -LocalPort $lp -State Listen)
