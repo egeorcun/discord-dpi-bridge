@@ -44,15 +44,20 @@ def log(msg):
                 f.write(line)
         except OSError:
             pass
-    try:
-        sys.stdout.write(line)
-        sys.stdout.flush()
-    except (OSError, ValueError):
-        pass
+    # pythonw.exe altinda sys.stdout None'dur; None.write AttributeError firlatir.
+    # Bu istisna yakalanmazsa cagiran thread (dinleyici) oldugu icin genis yakala.
+    out = sys.stdout
+    if out is not None:
+        try:
+            out.write(line)
+            out.flush()
+        except Exception:  # noqa: BLE001
+            pass
 
 
 def load_config():
-    with open(CFG_PATH, encoding="utf-8") as f:
+    # utf-8-sig: Not Defteri / PowerShell'in koydugu BOM'u sessizce yutar
+    with open(CFG_PATH, encoding="utf-8-sig") as f:
         cfg = json.load(f)
     socks = cfg.get("socks", {})
     doh = cfg.get("doh", {})
@@ -64,7 +69,12 @@ def load_config():
     }
 
 
-CFG = load_config()
+try:
+    CFG = load_config()
+except Exception as _e:  # noqa: BLE001
+    # pythonw altinda stderr yok; bunu loglamazsak kopru sessizce olur
+    log("[HATA] config okunamadi (%s): %s" % (CFG_PATH, _e))
+    sys.exit(2)
 
 
 def _is_loopback(ip):
