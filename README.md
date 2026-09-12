@@ -1,154 +1,93 @@
 # discord-dpi-bridge
 
-**Türkiye'de Discord'a girmek için GoodbyeDPI kullanıyorsun ama anti-cheat'li oyunlar (ARC Raiders, vb.) açılmıyor mu?** Bu araç tam o sorun için.
-
-GoodbyeDPI ve zapret gibi araçlar DPI engelini **çekirdek seviyesinde** bir sürücüyle (`WinDivert64.sys`) aşar. Denuvo Anti-Cheat, EAC gibi anti-cheat'ler bu tür paket müdahale sürücülerini gördüğünde oyunu başlatmayı reddeder — ARC Raiders'ta bu "Oyun çöktü, 0x1: Yanlış işlev" hatası olarak görünür.
-
-**discord-dpi-bridge** aynı işi **hiç çekirdek sürücüsü yüklemeden** yapar. Discord çalışır, oyun çalışır, ikisi aynı anda çalışır.
-
-> English summary at the bottom.
+**Türkiye'de Discord'a giremiyor ama GoodbyeDPI açıkken ARC Raiders gibi oyunlar açılmıyor mu?** Bu araç ikisini birden çözer: Discord açılır, oyun da açılır — çünkü hiçbir çekirdek sürücüsü yüklemez, anti-cheat'ler rahatsız olmaz.
 
 ---
 
-## Nasıl çalışıyor
+## 🚀 Nasıl çalıştırılır (3 adım)
 
-Discord tek bir program değil, iki ayrı ağ istemcisi taşıyor ve ikisi farklı davranıyor:
+### 1) İndir
+En kolayı: **[Releases sayfasından](https://github.com/egeorcun/discord-dpi-bridge/releases/latest)** `discord-dpi-bridge-vX.X.X.zip` dosyasını indir, sağ tıkla → **Tümünü ayıkla**.
 
-| Bileşen | Ne | Proxy kullanır mı |
-|---|---|---|
-| Sohbet / uygulama | Chromium | ✅ `--proxy-server` bayrağıyla |
-| **Güncelleyici** | Rust (`reqwest`) | ❌ Hiçbir ayarla — doğrudan bağlanır |
+> Git kullanıyorsan: `git clone https://github.com/egeorcun/discord-dpi-bridge`
 
-Bu yüzden dört parça var:
-
-```
-                     ┌──────────────────────────────────────────────┐
- Discord (Chromium) ─┤ --proxy-server=socks5://127.0.0.1:1080        │
-                     │        │                                       │
- Discord updater ────┤ hosts: updates.discord.com → 127.0.0.1:443    │
-                     │        │  relay.ps1 (TCP→SOCKS5 köprüsü)       │
-                     │        ▼                                       │
-                     │   ByeDPI (ciadpi.exe) SOCKS5, kullanıcı alanı  │──▶ internet
-                     │                                                │
- Windows DNS ────────┤ DNS over HTTPS (Cloudflare) — 53/udp'yi        │
-                     │ ele geçiren operatör DNS'ini atlar             │
-                     └──────────────────────────────────────────────┘
-```
-
-1. **ByeDPI** — DPI atlatmayı kullanıcı alanında yapan yerel SOCKS5 proxy. Sürücü yok.
-2. **relay.ps1** — Proxy kullanamayan güncelleyici için köprü. **Windows'ta yerleşik gelen PowerShell ile yazıldı; Python veya başka bir bağımlılık gerektirmez.** hosts dosyası `updates.discord.com`'u `127.0.0.1`'e yönlendirir; köprü o portu dinler ve bağlantıyı ByeDPI üzerinden gerçek sunucuya taşır. TLS'e dokunmaz, sertifika doğrulaması olduğu gibi kalır.
-3. **DNS over HTTPS** — Operatör düz DNS sorgularını şeffaf şekilde ele geçirip engel sayfası IP'si (`195.175.254.2`) döndürüyor; `1.1.1.1` yazmak yetmiyor. DoH bunu bitirir.
-4. **Discord bayrağı** — Kısayollara ve "Windows ile başlat" kaydına `--proxy-server` eklenir.
-5. **discord-guard** — Discord her güncellemede kısayollardaki bu bayrağı siler ve proxy'siz açılıp bağlanamaz. Gözcü arka planda bunu izler; proxy'siz açıldığını görünce kısayolları tazeleyip Discord'u proxy ile **otomatik yeniden başlatır** — elle müdahale gerekmez. Yalnızca zaten bozuk (proxy'siz) bir Discord'a dokunur; düzgün çalışan oturuma dokunmaz.
-
-Hepsi yeniden başlatmada kendiliğinden gelir (Startup klasöründe bir `.vbs`).
-
-## Gereksinimler
-
-- Windows 10 21H2+ / Windows 11 (DoH desteği için)
-- **Başka hiçbir şey yok** — köprü Windows'ta yerleşik gelen PowerShell 5.1 ile çalışır. Python veya harici kurulum gerekmez.
-- Yönetici yetkisi — sadece kurulumda (hosts + DNS için); çalışma zamanında hiçbir şey yönetici değildir
-
-## Kurulum
+### 2) Kur
+Ayıkladığın klasörü aç. Boş bir yere **Shift + sağ tık** → **"PowerShell penceresini burada aç"**. Sonra şunu yapıştırıp Enter'a bas:
 
 ```powershell
-git clone https://github.com/egeorcun/discord-dpi-bridge
-cd discord-dpi-bridge
 powershell -ExecutionPolicy Bypass -File .\install.ps1
 ```
 
-UAC penceresini onayla. Betik sırayla:
+Ekranda **"Evet / Yönetici olarak çalıştır"** çıkarsa onayla. Kurulum her şeyi kendisi yapar (birkaç soru sorabilir, hepsine **E** diyebilirsin).
 
-1. GoodbyeDPI / WinDivert bulursa **sorar** ve kaldırır (klasörüne dokunmaz, sadece Windows servisini siler)
-2. Çalışma ortamını doğrular (yerleşik PowerShell — kurulacak bir şey yok)
-3. ByeDPI'yi GitHub'dan indirir (`%LOCALAPPDATA%\discord-dpi-bridge\byedpi\`)
-4. DoH'u açar, DNS'i Cloudflare yapar (eskisini `dns-backup.json`'a yedekler)
-5. hosts dosyasına yazar (yedek: `hosts.discord-dpi-bridge.bak`)
-6. Startup girdisini oluşturur ve hemen başlatır
-7. Discord kısayollarını düzenler
-8. `status.ps1` ile doğrular
+### 3) Bitince
+- Kurulum "**yeniden başlat**" derse bilgisayarı yeniden başlat.
+- Sonra **Discord'u masaüstü kısayolundan aç.** Hepsi bu. 🎉
 
-GoodbyeDPI kaldırıldıysa **bilgisayarı yeniden başlat** — sürücü ancak öyle boşalır.
+Bundan sonra her açılışta kendiliğinden çalışır; bir daha uğraşman gerekmez.
 
-Önce ne yapacağını görmek istersen: `.\install.ps1 -DryRun` (yönetici gerektirmez, hiçbir şeyi değiştirmez).
+---
 
-## Kontrol
+## ✅ Çalışıyor mu diye bakmak
+
+Aynı klasörde PowerShell açıp:
 
 ```powershell
-.\status.ps1
+powershell -ExecutionPolicy Bypass -File .\status.ps1
 ```
 
-Her parçayı ayrı test eder ve nerede takıldığını söyler. Bir şey bozulduğunda ilk bakılacak yer bu.
+Her şey **[OK]** ve altta **"Her şey yolunda"** yazıyorsa tamamdır.
 
-## Discord güncellenince
+## 🔧 Discord bir gün yine açılmazsa
 
-Discord kendini güncellediğinde kısayollardaki proxy bayrağını siler. **discord-guard** arka planda bunu izleyip Discord'u otomatik olarak proxy ile yeniden başlattığı için normalde bir şey yapman gerekmez.
-
-Yine de elle düzeltmek istersen (ör. gözcü kapalıysa):
+Genelde **gerekmez** — arka plandaki gözcü, Discord güncellemelerinden sonra bunu otomatik düzeltir. Yine de olursa:
 
 ```powershell
-.\fix-discord.ps1
+powershell -ExecutionPolicy Bypass -File .\fix-discord.ps1
 ```
 
-Yönetici gerekmez. `status.ps1` ile gözcünün çalışıp çalışmadığını görebilirsin.
+Sonra Discord'u kapatıp tekrar aç.
 
-## Kaldırma
+## 🗑️ Kaldırmak
 
 ```powershell
-.\uninstall.ps1
+powershell -ExecutionPolicy Bypass -File .\uninstall.ps1
 ```
 
-hosts, DNS, Startup, Discord bayrakları — hepsini geri alır. DoH'u tutmak istersen `-KeepDoH`. GoodbyeDPI'yi geri kurmaz.
+Yaptığı her şeyi geri alır (hosts, DNS, kısayollar, otomatik başlatma).
 
-## Sık sorulanlar
+---
 
-**Windows Defender `ciadpi.exe`'yi karantinaya aldı.**
-ByeDPI'nin bilinen bir yanlış pozitifi (PUA). Windows Güvenliği → Koruma geçmişi → "Cihazda izin ver", sonra `install.ps1`'i tekrar çalıştır.
+## Ne gerekiyor?
 
-**`nslookup discord.com` timeout veriyor.**
-Normal. `nslookup` ham UDP gönderir, DoH kullanmaz. Doğru kontrol: `Resolve-DnsName discord.com`.
+- **Windows 10 (21H2+) veya Windows 11**
+- Başka **hiçbir şey** — Python vs. gerekmez. Her şey Windows'ta hazır gelen PowerShell ile çalışır.
+- Kurulumda bir kez yönetici izni ister (hosts + DNS ayarı için). Çalışırken hiçbir şey yönetici değildir.
 
-**Discord güncelleyici hâlâ dönüyor.**
-`status.ps1` çalıştır. `%APPDATA%\discord\logs\Discord_updater_rCURRENT.log` içinde hangi alan adına takıldığına bak; `updates.discord.com` ve `dl.discordapp.net` dışında bir şeyse `config.json`'daki `routes` ve `hosts_entries.map`'e ekleyip `install.ps1`'i tekrar çalıştır.
+## Neyi neden yapıyor? (kısaca)
 
-**Discord açılıyor ama bazı şeyler yüklenmiyor / ses yok.**
-Ses (UDP) proxy'den geçmez, doğrudan gider; genelde bu sorun olmaz çünkü engel alan adı bazlı. Çalışmıyorsa `config.json` → `byedpi.args`'ı operatörüne göre ayarlamak gerekebilir ([ByeDPI README](https://github.com/hufrea/byedpi)).
+GoodbyeDPI gibi araçlar engeli bir **çekirdek sürücüsüyle** (`WinDivert`) aşar; Denuvo/EAC gibi anti-cheat'ler bu sürücüyü görünce oyunu açmaz (ARC Raiders'ta "0x1: Yanlış işlev"). Bu araç aynı işi **sürücü olmadan** yapar:
 
-**Python gerekiyor mu?**
-Hayır. Köprü (`relay.ps1`) Windows'ta yerleşik gelen PowerShell 5.1 ile yazıldı; hiçbir ek çalışma ortamı kurman gerekmez. (Eski sürümlerde `relay.py` vardı; artık kaldırıldı.)
+1. **ByeDPI** — engeli kullanıcı seviyesinde aşan yerel proxy (sürücü yok).
+2. **relay.ps1** — Discord'un güncelleyicisini de proxy'den geçiren köprü.
+3. **DNS over HTTPS** — operatörün DNS engelini atlar.
+4. **discord-guard** — Discord güncellenip ayarını bozduğunda otomatik onarır.
 
-**Bu ayarlar hangi operatörde çalışır?**
-Varsayılan `byedpi.args` Türk Telekom'da test edildi. Farklı operatörde ByeDPI parametrelerini değiştirmen gerekebilir; DoH ve köprü kısmı operatörden bağımsızdır.
+Kurulum GoodbyeDPI bulursa onu (senin onayınla) kaldırır; klasörünü silmez, sadece Windows servisini durdurur.
 
-**Başka oyunlar / başka anti-cheat'ler?**
-Buradaki hiçbir parça çekirdek sürücüsü yüklemediği için anti-cheat'lerin görebileceği bir şey yok. Denuvo Anti-Cheat (ARC Raiders) ile doğrulandı. Ama her anti-cheat'i test etmedim; sorumluluk sende.
-
-**`udpfallback=no` ne demek, tehlikeli mi?**
-DoH başarısız olursa Windows zehirlenmiş düz DNS'e **geri dönmez** — engel geri gelmesin diye. Yan etkisi: `1.1.1.1`'e HTTPS erişimi kesilirse DNS tamamen susar. Bunu istemiyorsan `install.ps1 -AllowDnsFallback`.
-
-**VPN kullansam olmaz mıydı?**
-Olur, ama iki bedeli var: tüm oyun trafiği tünelden geçer (ping artar) ya da split tunneling gerekir — Proton VPN gibi istemcilerin split tunneling'i de WFP callout sürücüsü yüklüyor, o da anti-cheat açısından WinDivert'e benzer risk taşıyor.
+---
 
 ## Güvenlik ve doğrulama
 
-- Bu depo **hiçbir ikili (çalıştırılabilir) dosya taşımaz.** Tek ikili olan `ciadpi.exe` (ByeDPI), kurulum sırasında [ByeDPI'nin resmi GitHub sürümünden](https://github.com/hufrea/byedpi/releases) iner; `install.ps1` indirdiği sürümü `byedpi\version.txt`'e yazar. Geri kalan her şey okunabilir kaynak koddur (`.ps1`, `.py`) — indir, aç, oku.
-- **Neden antivirüs "PUA/HackTool" diyor?** ByeDPI bir DPI atlatma aracı olduğu için bazı motorlar onu "Riskware / PUA / HackTool / not-a-virus" diye işaretler. Bu bir **zararlı yazılım tespiti değil, kategori uyarısıdır** — aracın ne yaptığına bakıp koydukları etiket. ByeDPI açık kaynaktır, kodu incelenebilir. Windows Defender `ciadpi.exe`'yi karantinaya alırsa: Windows Güvenliği → Koruma geçmişi → "Cihazda izin ver", sonra `install.ps1`'i tekrar çalıştır.
+- Bu depo/indirme **hiçbir çalıştırılabilir (.exe) dosya taşımaz.** Tek ikili olan `ciadpi.exe` (ByeDPI), kurulumda [ByeDPI'nin resmi sürümünden](https://github.com/hufrea/byedpi/releases) iner. Geri kalan her şey açık, okunabilir metin dosyasıdır.
+- **Antivirüs "PUA/Riskware" derse:** ByeDPI bir engel-aşma aracı olduğu için bazı antivirüsler onu bu kategoriyle işaretler — bu bir virüs tespiti değildir. Windows Defender `ciadpi.exe`'yi silerse: Windows Güvenliği → Koruma geçmişi → **"Cihazda izin ver"**, sonra `install.ps1`'i tekrar çalıştır.
 
-### VirusTotal — `ciadpi.exe`
+**VirusTotal (ByeDPI ikilisi, ByeDPI v0.17.3):**
+`ciadpi.exe` — SHA-256 `eb53ceeeb981cc6735ac24bb1e51e725280b86630e80fdf19ddc4ee4a5b54ef4`
+→ https://www.virustotal.com/gui/file/eb53ceeeb981cc6735ac24bb1e51e725280b86630e80fdf19ddc4ee4a5b54ef4
 
-Doğrulanan sürüm: **ByeDPI v0.17.3**, `byedpi-17.3-x86_64-w64.zip` içindeki `ciadpi.exe`.
-
-| Alan | Değer |
-|---|---|
-| SHA-256 | `eb53ceeeb981cc6735ac24bb1e51e725280b86630e80fdf19ddc4ee4a5b54ef4` |
-| Boyut | 129 024 bayt |
-| VirusTotal | **https://www.virustotal.com/gui/file/eb53ceeeb981cc6735ac24bb1e51e725280b86630e80fdf19ddc4ee4a5b54ef4** |
-
-> Bağlantı, dosyanın **o an geçerli** VirusTotal taramasını gösterir (oran zamanla değişebilir). DPI araçları için birkaç motorun "PUA/Riskware" işaretlemesi beklenen bir durumdur; önemli olan tespitin türü, sayısı değil. Bu SHA-256, ByeDPI'nin resmi sürümündeki `ciadpi.exe` ile aynıdır — yani üst(upstream) ile birebir doğrulayabilirsin.
-
-### Kaynak dosyalar (bütünlük)
-
-Aşağıdakiler bu deponun kendi kaynak dosyaları. `git clone` ile alındıklarında (satır sonları `.gitattributes` ile sabitlenir: `.ps1` = CRLF, `.py`/`.json` = LF) SHA-256'ları:
+<details>
+<summary><b>Kaynak dosyaların SHA-256 (git clone ile alındığında)</b></summary>
 
 | Dosya | SHA-256 |
 |---|---|
@@ -160,45 +99,33 @@ Aşağıdakiler bu deponun kendi kaynak dosyaları. `git clone` ile alındıklar
 | `fix-discord.ps1` | `2f195dbca2a222ff97e852f4069ab69f1f98e316f989fe587038bea9053c558e` |
 | `config.json` | `43da260d90a56ff8886e94b5664774241d4d934f61a598db88f4365e31b37c5d` |
 
-Kendi indirdiğin dosyayı doğrulamak için:
-
-```powershell
-Get-FileHash .\ciadpi.exe -Algorithm SHA256   # ByeDPI ikili — yukaridaki ile karsilastir
-Get-FileHash .\relay.ps1  -Algorithm SHA256
-```
-
-> Not: Bu betikler bu deponun yeni dosyaları; VirusTotal'da henüz taranmamış olabilirler. İstersen kendin yükleyip tarat — hepsi düz metin, gizli bir şey yok. Metin dosyalarının hash'i satır sonu ayarına duyarlıdır; şüphede kalırsan `git clone` ile al ya da dosyayı doğrudan oku. İkili `ciadpi.exe`'nin hash'i satır sonundan etkilenmez, en güvenilir doğrulama noktası odur.
+Doğrulamak için: `Get-FileHash .\dosya -Algorithm SHA256`. Metin dosyalarının hash'i satır sonu ayarına duyarlıdır; en güvenilir doğrulama satır sonundan etkilenmeyen `ciadpi.exe`'dir.
+</details>
 
 ## Sınırlar — dürüstçe
 
-- Bu bir **çözüm değil, geçici yol**. Discord istemcisini değiştirdiğinde (yeni bir alan adı, güncelleyicinin davranışı) kırılabilir.
-- Chromium tarafı ECH (şifreli SNI) + DoH ile bazen proxy'siz de bağlanabiliyor; buna güvenilmedi çünkü operatör istediği an ECH'i kesebilir.
-- `relay.ps1` yalnızca IPv4 hedefleri çözer.
-- DPI atlatma araçlarının hukuki durumu ülkeye göre değişir. Bu araç bir iletişim uygulamasına erişmek içindir; yerel mevzuat ve hizmet şartlarına uyum kullanıcının sorumluluğundadır.
+- Bu bir **kalıcı çözüm değil, geçici bir yoldur**; Discord kendi yapısını değiştirirse bozulabilir (gözcü çoğu durumu yakalar ama garanti değil).
+- Sesli sohbet (UDP) proxy'den geçmez; genelde sorun olmaz ama operatöre göre değişebilir.
+- Varsayılan ayarlar **Türk Telekom**'da doğrulandı. Başka operatörde `config.json` içindeki `byedpi.args`'ı ayarlaman gerekebilir ([ByeDPI](https://github.com/hufrea/byedpi)).
+- DPI atlatmanın yasal durumu ülkeye göre değişir; kullanım sorumluluğu kullanıcıya aittir.
 
 ## Teşekkür
 
-- [ByeDPI](https://github.com/hufrea/byedpi) — hufrea. Kullanıcı alanında DPI atlatmanın tamamı onun işi.
-- [GoodbyeDPI](https://github.com/ValdikSS/GoodbyeDPI) — ValdikSS. Sorunu yaşayana kadar yıllarca işimizi gördü.
+- [ByeDPI](https://github.com/hufrea/byedpi) (hufrea) — kullanıcı alanında DPI atlatmanın tamamı.
+- [GoodbyeDPI](https://github.com/ValdikSS/GoodbyeDPI) (ValdikSS) — yıllarca iş gördü.
 
 ## Lisans
 
-MIT. ByeDPI ayrı lisanslıdır (MIT) ve kurulumda ayrıca indirilir; bu depoda barındırılmaz.
+MIT. ByeDPI ayrı lisanslıdır (MIT) ve kurulumda ayrıca indirilir.
 
 ---
 
-## English summary
+<details>
+<summary><b>English summary</b></summary>
 
-**Problem.** In Turkey, Discord is DPI-blocked. The usual fix (GoodbyeDPI / zapret) works via the `WinDivert64.sys` kernel packet-interception driver — which kernel anti-cheats (Denuvo Anti-Cheat, EAC, …) refuse to coexist with. ARC Raiders shows this as "Game crashed, 0x1: Incorrect function."
+In Turkey, Discord is DPI-blocked. The usual fix (GoodbyeDPI/zapret) uses the `WinDivert` **kernel driver**, which anti-cheats (Denuvo, EAC) refuse to run alongside — so ARC Raiders won't launch. This tool reaches Discord with **no kernel driver**, so the game and Discord both work.
 
-**What this does.** Reaches Discord with **no kernel driver at all**, so the game and Discord run side by side:
+**Run it:** download the zip from [Releases](https://github.com/egeorcun/discord-dpi-bridge/releases/latest), extract, open PowerShell in the folder, and run `powershell -ExecutionPolicy Bypass -File .\install.ps1` (approve the UAC prompt). Reboot if asked, then open Discord. Done — it auto-starts on every boot.
 
-1. **ByeDPI** — user-space SOCKS5 proxy doing the DPI desync.
-2. **relay.ps1** — Discord's updater is a separate Rust/`reqwest` client that ignores every proxy setting (Chromium flag, `HTTPS_PROXY`, `settings.json`). So `hosts` points `updates.discord.com` at a loopback address, and this bridge forwards that TCP connection through ByeDPI to the real server. TLS is untouched; certificate validation stays intact. The bridge resolves the real IP via DoH and hands SOCKS5 an **IP**, not a hostname — otherwise ByeDPI would resolve the hosts entry and loop back into the bridge. **Written in built-in Windows PowerShell — no Python or other dependency.**
-3. **DNS over HTTPS** — the ISP transparently hijacks plain port-53 DNS and returns a block-page IP; setting `1.1.1.1` alone doesn't help.
-4. **`--proxy-server`** added to Discord's shortcuts and Run key.
-5. **discord-guard** — a background watcher that re-applies the flag and restarts Discord automatically whenever a Discord self-update strips it, so you never have to intervene. It only touches an already-broken (proxy-less) Discord.
-
-`install.ps1` (self-elevates; `-DryRun` to preview), `status.ps1` (health check, no admin), `fix-discord.ps1` (manual flag re-apply), `discord-guard.ps1` (auto re-apply on update), `uninstall.ps1` (reverts everything). Config in `config.json`. Requires only Windows 10 21H2+/11 — everything runs on built-in PowerShell 5.1, **no Python or other dependency**.
-
-Tested on Türk Telekom with Denuvo Anti-Cheat (ARC Raiders). Other ISPs may need different `byedpi.args`. This is a workaround, not a fix; it may break when Discord changes its client. Legal status of DPI circumvention varies by country — compliance is the user's responsibility.
+`status.ps1` checks health, `fix-discord.ps1` re-applies the flag manually (rarely needed — `discord-guard` does it automatically after Discord updates), `uninstall.ps1` reverts everything. Needs only Windows 10 21H2+/11; runs on built-in PowerShell, **no Python or other dependency**. No binaries shipped — `ciadpi.exe` (ByeDPI) is downloaded from its official release; SHA-256 + VirusTotal above. A workaround, not a fix; DPI-circumvention legality varies by country.
+</details>
