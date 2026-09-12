@@ -1,5 +1,7 @@
 # discord-dpi-bridge
 
+**Diğer dillerde oku:** **Türkçe** · [English](README.en.md)
+
 **Türkiye'de Discord'a giremiyor ama GoodbyeDPI açıkken ARC Raiders gibi oyunlar açılmıyor mu?** Bu araç ikisini birden çözer: Discord açılır, oyun da açılır — çünkü hiçbir çekirdek sürücüsü yüklemez, anti-cheat'ler rahatsız olmaz.
 
 ---
@@ -120,12 +122,4 @@ MIT. ByeDPI ayrı lisanslıdır (MIT) ve kurulumda ayrıca indirilir.
 
 ---
 
-<details>
-<summary><b>English summary</b></summary>
-
-In Turkey, Discord is DPI-blocked. The usual fix (GoodbyeDPI/zapret) uses the `WinDivert` **kernel driver**, which anti-cheats (Denuvo, EAC) refuse to run alongside — so ARC Raiders won't launch. This tool reaches Discord with **no kernel driver**, so the game and Discord both work.
-
-**Run it:** download the zip from [Releases](https://github.com/egeorcun/discord-dpi-bridge/releases/latest), extract, open PowerShell in the folder, and run `powershell -ExecutionPolicy Bypass -File .\install.ps1` (approve the UAC prompt). Reboot if asked, then open Discord. Done — it auto-starts on every boot.
-
-`status.ps1` checks health, `fix-discord.ps1` re-applies the flag manually (rarely needed — `discord-guard` does it automatically after Discord updates), `uninstall.ps1` reverts everything. Needs only Windows 10 21H2+/11; runs on built-in PowerShell, **no Python or other dependency**. No binaries shipped — `ciadpi.exe` (ByeDPI) is downloaded from its official release; SHA-256 + VirusTotal above. A workaround, not a fix; DPI-circumvention legality varies by country.
-</details>
+🇬🇧 **English:** see **[README.en.md](README.en.md)**.
