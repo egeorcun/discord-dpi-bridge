@@ -39,6 +39,7 @@ Bu yüzden dört parça var:
 2. **relay.ps1** — Proxy kullanamayan güncelleyici için köprü. **Windows'ta yerleşik gelen PowerShell ile yazıldı; Python veya başka bir bağımlılık gerektirmez.** hosts dosyası `updates.discord.com`'u `127.0.0.1`'e yönlendirir; köprü o portu dinler ve bağlantıyı ByeDPI üzerinden gerçek sunucuya taşır. TLS'e dokunmaz, sertifika doğrulaması olduğu gibi kalır.
 3. **DNS over HTTPS** — Operatör düz DNS sorgularını şeffaf şekilde ele geçirip engel sayfası IP'si (`195.175.254.2`) döndürüyor; `1.1.1.1` yazmak yetmiyor. DoH bunu bitirir.
 4. **Discord bayrağı** — Kısayollara ve "Windows ile başlat" kaydına `--proxy-server` eklenir.
+5. **discord-guard** — Discord her güncellemede kısayollardaki bu bayrağı siler ve proxy'siz açılıp bağlanamaz. Gözcü arka planda bunu izler; proxy'siz açıldığını görünce kısayolları tazeleyip Discord'u proxy ile **otomatik yeniden başlatır** — elle müdahale gerekmez. Yalnızca zaten bozuk (proxy'siz) bir Discord'a dokunur; düzgün çalışan oturuma dokunmaz.
 
 Hepsi yeniden başlatmada kendiliğinden gelir (Startup klasöründe bir `.vbs`).
 
@@ -79,15 +80,17 @@ GoodbyeDPI kaldırıldıysa **bilgisayarı yeniden başlat** — sürücü ancak
 
 Her parçayı ayrı test eder ve nerede takıldığını söyler. Bir şey bozulduğunda ilk bakılacak yer bu.
 
-## Discord güncellenince bozulursa
+## Discord güncellenince
 
-Discord kendini güncellediğinde kısayolları sıfırlayabiliyor. Discord açılmıyorsa:
+Discord kendini güncellediğinde kısayollardaki proxy bayrağını siler. **discord-guard** arka planda bunu izleyip Discord'u otomatik olarak proxy ile yeniden başlattığı için normalde bir şey yapman gerekmez.
+
+Yine de elle düzeltmek istersen (ör. gözcü kapalıysa):
 
 ```powershell
 .\fix-discord.ps1
 ```
 
-Yönetici gerekmez.
+Yönetici gerekmez. `status.ps1` ile gözcünün çalışıp çalışmadığını görebilirsin.
 
 ## Kaldırma
 
@@ -193,7 +196,8 @@ MIT. ByeDPI ayrı lisanslıdır (MIT) ve kurulumda ayrıca indirilir; bu depoda 
 2. **relay.ps1** — Discord's updater is a separate Rust/`reqwest` client that ignores every proxy setting (Chromium flag, `HTTPS_PROXY`, `settings.json`). So `hosts` points `updates.discord.com` at a loopback address, and this bridge forwards that TCP connection through ByeDPI to the real server. TLS is untouched; certificate validation stays intact. The bridge resolves the real IP via DoH and hands SOCKS5 an **IP**, not a hostname — otherwise ByeDPI would resolve the hosts entry and loop back into the bridge. **Written in built-in Windows PowerShell — no Python or other dependency.**
 3. **DNS over HTTPS** — the ISP transparently hijacks plain port-53 DNS and returns a block-page IP; setting `1.1.1.1` alone doesn't help.
 4. **`--proxy-server`** added to Discord's shortcuts and Run key.
+5. **discord-guard** — a background watcher that re-applies the flag and restarts Discord automatically whenever a Discord self-update strips it, so you never have to intervene. It only touches an already-broken (proxy-less) Discord.
 
-`install.ps1` (self-elevates; `-DryRun` to preview), `status.ps1` (health check, no admin), `fix-discord.ps1` (re-apply flags after a Discord update), `uninstall.ps1` (reverts everything). Config in `config.json`. Requires only Windows 10 21H2+/11 — the bridge runs on built-in PowerShell 5.1, **no Python or other dependency**.
+`install.ps1` (self-elevates; `-DryRun` to preview), `status.ps1` (health check, no admin), `fix-discord.ps1` (manual flag re-apply), `discord-guard.ps1` (auto re-apply on update), `uninstall.ps1` (reverts everything). Config in `config.json`. Requires only Windows 10 21H2+/11 — everything runs on built-in PowerShell 5.1, **no Python or other dependency**.
 
 Tested on Türk Telekom with Denuvo Anti-Cheat (ARC Raiders). Other ISPs may need different `byedpi.args`. This is a workaround, not a fix; it may break when Discord changes its client. Legal status of DPI circumvention varies by country — compliance is the user's responsibility.

@@ -42,6 +42,8 @@ if ($l.Count -gt 0) { Row $true "port $($cfg.socks.port) dinleniyor" $l[0].Local
 Write-Host "`nKopru (relay.ps1)" -ForegroundColor Yellow
 $rp = @(Get-CimInstance Win32_Process | Where-Object { $_.Name -eq 'powershell.exe' -and $_.CommandLine -match 'relay\.ps1' })
 if ($rp.Count -gt 0) { Row $true 'relay.ps1 sureci' "PID $($rp.ProcessId -join ',')" } else { Row $false 'relay.ps1 sureci' 'calismiyor' }
+$gp = @(Get-CimInstance Win32_Process | Where-Object { $_.Name -eq 'powershell.exe' -and $_.CommandLine -match 'discord-guard\.ps1' })
+if ($gp.Count -gt 0) { Row $true 'discord-guard sureci' "PID $($gp.ProcessId -join ',')" } else { Row $false 'discord-guard sureci' 'calismiyor (Discord guncellemesinden sonra bayrak otomatik gelmez)' }
 foreach ($r in $cfg.routes) {
   $lp = $r.port; if ($r.listen_port) { $lp = $r.listen_port }
   $ok = @(Get-NetTCPConnection -LocalAddress $r.listen -LocalPort $lp -State Listen)
@@ -83,9 +85,14 @@ if ($null -ne $lnk) {
 }
 $upd = "$env:APPDATA\discord\logs\Discord_updater_rCURRENT.log"
 if (Test-Path $upd) {
-  $err = Get-Content $upd | Select-String -CaseSensitive 'ERROR' | Select-Object -Last 1
+  $lines = Get-Content $upd
+  $err  = $lines | Select-String -CaseSensitive 'ERROR' | Select-Object -Last 1
+  $info = $lines | Select-String -CaseSensitive 'INFO'  | Select-Object -Last 1
   if ($null -eq $err) { Row $true 'guncelleyici logu' 'hata yok' }
-  else {
+  elseif ($info -and $info.LineNumber -gt $err.LineNumber) {
+    # son hatadan sonra basarili aktivite var -> toparlanmis, eski hata
+    Row $true 'guncelleyici logu' 'eski hata var ama sonrasinda toparlanmis (sorun yok)'
+  } else {
     $m = $err.Line -replace '.*source: ', ''
     if ($m.Length -gt 90) { $m = $m.Substring(0, 90) + '...' }
     Row $false 'guncelleyici logu' $m

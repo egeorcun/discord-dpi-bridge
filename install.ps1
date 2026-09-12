@@ -110,7 +110,7 @@ Ok "Kopru yerlesik Windows PowerShell ile calisir (Python/harici bagimlilik yok)
 # ---------- 3) dosyalar + ByeDPI ----------
 Step "Dosyalar ve ByeDPI"
 Act "Klasor: $Install" { New-Item -ItemType Directory -Force -Path $Install, (Join-Path $Install 'byedpi') | Out-Null } | Out-Null
-foreach ($f in 'relay.ps1', 'config.json') {
+foreach ($f in 'relay.ps1', 'discord-guard.ps1', 'fix-discord.ps1', 'config.json') {
   Act "kopyala $f" { Copy-Item (Join-Path $Root $f) (Join-Path $Install $f) -Force } | Out-Null
 }
 $ciadpi = Join-Path $Install 'byedpi\ciadpi.exe'
@@ -214,12 +214,13 @@ sh.CurrentDirectory = base
 sh.Run """" & base & "byedpi\ciadpi.exe"" -i $($cfg.socks.host) -p $($cfg.socks.port) $($cfg.byedpi.args)", 0, False
 WScript.Sleep 1500
 sh.Run "$psexe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File """ & base & "relay.ps1"" """ & base & "config.json""", 0, False
+sh.Run "$psexe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File """ & base & "discord-guard.ps1"" """ & base & "config.json""", 0, False
 "@
 Act "Startup: $Startup" { Set-Content -Path $Startup -Value $vbs -Encoding ASCII } | Out-Null
 Act "eski ciadpi/relay sureclerini durdur" {
   Get-Process ciadpi -ErrorAction SilentlyContinue | Stop-Process -Force
-  # eski Python koprusu (varsa) + yeni PowerShell koprusu
-  Get-CimInstance Win32_Process | Where-Object { ($_.Name -match '^python' -and $_.CommandLine -match 'relay\.py') -or ($_.Name -eq 'powershell.exe' -and $_.CommandLine -match 'relay\.ps1') } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+  # eski Python koprusu (varsa) + yeni PowerShell koprusu + gozcu
+  Get-CimInstance Win32_Process | Where-Object { ($_.Name -match '^python' -and $_.CommandLine -match 'relay\.py') -or ($_.Name -eq 'powershell.exe' -and $_.CommandLine -match 'relay\.ps1|discord-guard\.ps1') } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
   Start-Sleep -Seconds 1
 } | Out-Null
 Act "simdi baslat (wscript)" { Start-Process wscript.exe -ArgumentList "`"$Startup`""; Start-Sleep -Seconds 4 } | Out-Null
