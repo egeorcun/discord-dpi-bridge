@@ -58,11 +58,22 @@ powershell -ExecutionPolicy Bypass -File .\uninstall.ps1
 
 Yaptığı her şeyi geri alır (hosts, DNS, kısayollar, otomatik başlatma).
 
+
+## 🍎 macOS
+
+macOS sürümü ayrı bir klasörde: **[macos/README.md](macos/README.md)**. Aynı işi ByeDPI + sistem proxy (PAC) ile yapar; hosts/kısayol/gözcü gerekmez.
+
+```bash
+bash macos/install.sh
+```
+
+> Android için bu araç uyarlanamaz; orada [ByeByeDPI](https://github.com/romanvht/ByeByeDPI) uygulaması aynı işi (uygulama bazlı VPN modu, root gerekmez) yapar — `config.json` içindeki `byedpi.args` değerini oraya yapıştırabilirsin.
+
 ---
 
 ## Ne gerekiyor?
 
-- **Windows 10 (21H2+) veya Windows 11**
+- **Windows 10 (21H2+) veya Windows 11** (macOS için: [macos/README.md](macos/README.md))
 - Başka **hiçbir şey** — Python vs. gerekmez. Her şey Windows'ta hazır gelen PowerShell ile çalışır.
 - Kurulumda bir kez yönetici izni ister (hosts + DNS ayarı için). Çalışırken hiçbir şey yönetici değildir.
 
@@ -99,7 +110,7 @@ Kurulum GoodbyeDPI bulursa onu (senin onayınla) kaldırır; klasörünü silmez
 | `uninstall.ps1` | `1d1f78ad7d9eb0e728b4e2e620df31d51f3fdb1e342643fb8e1fc5ae6e37e5aa` |
 | `status.ps1` | `d1f535f6341e13805adbec4919fe8ecfc0ed53673c878348bb9cada9dbf4a703` |
 | `fix-discord.ps1` | `2f195dbca2a222ff97e852f4069ab69f1f98e316f989fe587038bea9053c558e` |
-| `config.json` | `43da260d90a56ff8886e94b5664774241d4d934f61a598db88f4365e31b37c5d` |
+| `config.json` | `0db3eadc2b76f9d00d2aad67e106180d9845424cbe6ddb4975d24961c6336596` |
 
 Doğrulamak için: `Get-FileHash .\dosya -Algorithm SHA256`. Metin dosyalarının hash'i satır sonu ayarına duyarlıdır; en güvenilir doğrulama satır sonundan etkilenmeyen `ciadpi.exe`'dir.
 </details>

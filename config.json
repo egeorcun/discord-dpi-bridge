@@ -1,5 +1,5 @@
 {
-  "_aciklama": "discord-dpi-bridge ayarlari. install.ps1 bu dosyayi okur; relay.py 'socks', 'doh' ve 'routes' alanlarini kullanir.",
+  "_aciklama": "discord-dpi-bridge ayarlari. Windows: install.ps1 bu dosyayi okur; relay.ps1 'socks', 'doh' ve 'routes' alanlarini kullanir. macOS: macos/install.sh 'socks', 'byedpi', 'dns', 'doh' ve 'macos' alanlarini kullanir.",
 
   "socks": { "host": "127.0.0.1", "port": 1080 },
 
@@ -38,5 +38,22 @@
   "discord": {
     "_aciklama": "Discord kisayollarina ve otomatik baslatma kaydina eklenecek Chromium bayragi.",
     "proxy_server": "socks5://127.0.0.1:1080"
+  },
+
+  "macos": {
+    "_aciklama": "Yalnizca macOS (macos/install.sh). proxy_domains: PAC ile ByeDPI'ye yonlendirilen alan adlari (alt alanlar dahil); geri kalan trafik dogrudan gider. byedpi_args bos ise byedpi.args kullanilir. pac_port: proxy.pac'in 127.0.0.1'de sunuldugu port.",
+    "byedpi_args": "",
+    "pac_port": 18080,
+    "proxy_domains": [
+      "discord.com",
+      "discordapp.com",
+      "discordapp.net",
+      "discord.gg",
+      "discordcdn.com",
+      "discord.media",
+      "discordstatus.com",
+      "discordsays.com"
+    ],
+    "launchd_prefix": "com.egeorcun.discord-dpi-bridge"
   }
 }

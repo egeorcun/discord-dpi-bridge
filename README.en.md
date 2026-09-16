@@ -4,6 +4,7 @@
 
 **Can't reach Discord in your country, but anti-cheat games like ARC Raiders won't launch while GoodbyeDPI is on?** This tool fixes both at once: Discord works *and* the game works — because it installs no kernel driver, so anti-cheats stay happy.
 
+
 ---
 
 ## 🚀 How to run it (3 steps)
@@ -58,11 +59,22 @@ powershell -ExecutionPolicy Bypass -File .\uninstall.ps1
 
 Reverts everything it did (hosts, DNS, shortcuts, auto-start).
 
+
+## 🍎 macOS
+
+The macOS version lives in its own folder: **[macos/README.en.md](macos/README.en.md)**. Same job via ByeDPI + system proxy (PAC); no hosts/shortcut/guard needed.
+
+```bash
+bash macos/install.sh
+```
+
+> This tool cannot be adapted to Android; there the [ByeByeDPI](https://github.com/romanvht/ByeByeDPI) app does the same job (per-app VPN mode, no root) — paste the `byedpi.args` value from `config.json` into it.
+
 ---
 
 ## Requirements
 
-- **Windows 10 (21H2+) or Windows 11**
+- **Windows 10 (21H2+) or Windows 11** (macOS: [macos/README.en.md](macos/README.en.md))
 - **Nothing else** — no Python etc. Everything runs on the PowerShell that ships with Windows.
 - One-time administrator prompt during install (for the hosts + DNS settings). Nothing runs as admin afterward.
 
@@ -99,7 +111,7 @@ If the installer finds GoodbyeDPI, it removes it (with your consent) — it does
 | `uninstall.ps1` | `1d1f78ad7d9eb0e728b4e2e620df31d51f3fdb1e342643fb8e1fc5ae6e37e5aa` |
 | `status.ps1` | `d1f535f6341e13805adbec4919fe8ecfc0ed53673c878348bb9cada9dbf4a703` |
 | `fix-discord.ps1` | `2f195dbca2a222ff97e852f4069ab69f1f98e316f989fe587038bea9053c558e` |
-| `config.json` | `43da260d90a56ff8886e94b5664774241d4d934f61a598db88f4365e31b37c5d` |
+| `config.json` | `0db3eadc2b76f9d00d2aad67e106180d9845424cbe6ddb4975d24961c6336596` |
 
 Verify with `Get-FileHash .\file -Algorithm SHA256`. Text-file hashes depend on line-ending settings; the most reliable check is `ciadpi.exe`, which is unaffected.
 </details>
