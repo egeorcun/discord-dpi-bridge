@@ -6,18 +6,20 @@
 #  2. ByeDPI'yi kaynaktan derler (resmi macOS ikilisi yok) -> ~/Library/Application Support/discord-dpi-bridge/byedpi/ciadpi
 #  3. ByeDPI'yi kullanici seviyesinde LaunchAgent olarak calistirir (SOCKS5 127.0.0.1:1080, acilista otomatik)
 #  4. Yalnizca Discord alanlarini bu proxy'ye yonlendiren bir PAC dosyasi uretir ve 127.0.0.1'den sunar
-#  5. Sistem proxy ayarina (networksetup) bu PAC'i yazar  -> Discord da, guncelleyicisi de ByeDPI'den gecer
-#  6. DNS'i Cloudflare yapar ve DNS over HTTPS profili (.mobileconfig) uretip acar (kullanici onaylar)
-#  7. status.sh ile dogrular
+#  5. Sistem proxy ayarina (networksetup) bu PAC'i yazar  -> Discord (Electron/Chromium) ByeDPI'den gecer
+#  6. Guncelleyici koprusu: Discord'un guncelleyicisi (Rust) PAC'e UYMAZ. Guncelleme alanlari /etc/hosts ile
+#     127.0.0.1'e cevrilir; relay.py (root LaunchDaemon, 443, hemen 'nobody'ye duser) bunlari ByeDPI'ye tasir
+#  7. DNS'i Cloudflare yapar ve DNS over HTTPS profili (.mobileconfig) uretip acar (kullanici onaylar)
+#  8. status.sh ile dogrular
 #
-# Windows surumundeki hosts/relay/kisayol/gozcu parcalari macOS'ta GEREKMEZ: macOS'ta hem Electron
-# hem de Discord'un guncelleyicisi sistem proxy (PAC) ayarina uyar.
+# Windows surumundeki kisayol/gozcu parcalari macOS'ta GEREKMEZ (Chromium sistem proxy ayarina uyar).
 #
 # Kullanim: bash macos/install.sh [secenekler]
 #   -y, --yes           Sorulari sormadan evet say
 #   --dry-run           Hicbir sey degistirme, ne yapacagini anlat
 #   --skip-dns          DNS / DoH ayarlarina dokunma
 #   --skip-proxy        Sistem proxy ayarina dokunma (sadece ByeDPI'yi kur)
+#   --skip-relay        Guncelleyici koprusunu ve /etc/hosts girdilerini kurma
 #   --system-socks      PAC yerine sistem geneli SOCKS proxy ayarla (tum uygulamalar ByeDPI'den gecer;
 #                       guncelleyici PAC'e uymuyorsa yedek yol)
 #   --byedpi-tag vX.Y.Z Belirli bir ByeDPI surumu (bos = en yeni)
@@ -26,16 +28,17 @@ set -euo pipefail
 # shellcheck source=lib.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 
-YES=0; DRY=0; SKIP_DNS=0; SKIP_PROXY=0; SYSTEM_SOCKS=0; BYEDPI_TAG=""
+YES=0; DRY=0; SKIP_DNS=0; SKIP_PROXY=0; SKIP_RELAY=0; SYSTEM_SOCKS=0; BYEDPI_TAG=""
 while [ $# -gt 0 ]; do
   case "$1" in
     -y|--yes) YES=1 ;;
     --dry-run) DRY=1 ;;
     --skip-dns) SKIP_DNS=1 ;;
     --skip-proxy) SKIP_PROXY=1 ;;
+    --skip-relay) SKIP_RELAY=1 ;;
     --system-socks) SYSTEM_SOCKS=1 ;;
     --byedpi-tag) shift; BYEDPI_TAG="${1:-}" ;;
-    -h|--help) sed -n '2,25p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) sed -n '2,28p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) fail "bilinmeyen secenek: $1"; exit 2 ;;
   esac
   shift
@@ -190,8 +193,16 @@ install_agents() {
 }
 act "$LABEL_BYEDPI + $LABEL_PAC" install_agents
 if [ "$DRY" -eq 0 ]; then
-  if agent_loaded "$LABEL_BYEDPI"; then ok "ByeDPI calisiyor"; else fail "ByeDPI agent yuklenemedi; log: $LOG_DIR/byedpi.log"; fi
-  if agent_loaded "$LABEL_PAC"; then ok "PAC sunucusu calisiyor"; else fail "PAC agent yuklenemedi; log: $LOG_DIR/pac.log"; fi
+  # "yuklu" yetmez: portu gercekten dinliyor mu bak
+  if agent_loaded "$LABEL_BYEDPI" && nc -z "$SOCKS_HOST" "$SOCKS_PORT" 2>/dev/null; then ok "ByeDPI calisiyor"
+  else fail "ByeDPI calismiyor (port $SOCKS_PORT dinlenmiyor); log: $LOG_DIR/byedpi.log"; fi
+  pac_ok=0
+  for _ in 1 2 3 4 5; do   # python ilk aciliste birkac saniye surebilir
+    if curl -fsS -m 3 --noproxy '*' "$PAC_URL" 2>/dev/null | grep -q FindProxyForURL; then pac_ok=1; break; fi
+    sleep 1
+  done
+  if agent_loaded "$LABEL_PAC" && [ "$pac_ok" -eq 1 ]; then ok "PAC sunucusu calisiyor"
+  else fail "PAC sunucusu cevap vermiyor; log: $LOG_DIR/pac.log"; fi
 fi
 
 # ---------- 5) sistem proxy + DNS (networksetup, yonetici parolasi ister) ----------
@@ -239,7 +250,69 @@ else
   ok "Sistem proxy ayarlandi"
 fi
 
-# ---------- 6) DNS + DoH profili ----------
+# ---------- 6) guncelleyici koprusu (relay + /etc/hosts) ----------
+if [ "$SKIP_RELAY" -eq 1 ]; then
+  warn "skip-relay: guncelleyici koprusu kurulmadi (Discord 'Update failed' dongusune girebilir)"
+else
+  step "Guncelleyici koprusu (relay + /etc/hosts)"
+  info "Discord'un guncelleyicisi PAC'e uymaz; su alanlar 127.0.0.1'e cevrilip ByeDPI'ye tasinacak:"
+  info "  $RELAY_HOSTS"
+  [ "$DRY" -eq 1 ] || sudo -v
+  install_relay() {
+    local tmp
+    tmp="$(mktemp -t discord-dpi-bridge-relay)"
+    /usr/bin/python3 - "$tmp" "$LABEL_RELAY" "$RELAY_SCRIPT" "$SOCKS_HOST:$SOCKS_PORT" "$DOH_URL" "$(echo $RELAY_HOSTS | tr ' ' ',')" "$LOG_DIR/relay.log" <<'PY'
+import plistlib, sys
+out, label, script, socks, doh, hosts, log = sys.argv[1:]
+plistlib.dump({
+    "Label": label,
+    "ProgramArguments": ["/usr/bin/python3", script, "--socks", socks, "--doh", doh, "--hosts", hosts],
+    "RunAtLoad": True,
+    "KeepAlive": True,
+    "ThrottleInterval": 5,
+    "StandardOutPath": log,
+    "StandardErrorPath": log,
+}, open(out, "wb"))
+PY
+    sudo launchctl bootout "system/$LABEL_RELAY" >/dev/null 2>&1 || true
+    sleep 1
+    sudo mkdir -p "$RELAY_SYS_DIR"
+    sudo install -o root -g wheel -m 644 "$MACOS_DIR/relay.py" "$RELAY_SCRIPT"
+    sudo install -o root -g wheel -m 644 "$tmp" "$PLIST_RELAY"
+    rm -f "$tmp"
+    for _ in 1 2 3 4 5; do sudo launchctl bootstrap system "$PLIST_RELAY" 2>/dev/null && break; sleep 1; done
+  }
+  act "relay -> $RELAY_SCRIPT ($LABEL_RELAY)" install_relay
+  write_hosts() {
+    local tmp h
+    tmp="$(mktemp -t discord-dpi-bridge-hosts)"
+    [ -f "$HOSTS_FILE.discord-dpi-bridge.bak" ] || sudo cp "$HOSTS_FILE" "$HOSTS_FILE.discord-dpi-bridge.bak"
+    {
+      hosts_without_block
+      echo "$HOSTS_BEGIN"
+      for h in $RELAY_HOSTS; do echo "127.0.0.1 $h"; echo "::1 $h"; done
+      echo "$HOSTS_END"
+    } > "$tmp"
+    sudo cp "$tmp" "$HOSTS_FILE"   # cp hedefin sahibini/izinlerini korur
+    rm -f "$tmp"
+    flush_dns
+  }
+  if [ "$DRY" -eq 0 ]; then
+    ok_relay=0
+    for _ in 1 2 3 4 5 6; do relay_running && { ok_relay=1; break; }; sleep 1; done
+    if [ "$ok_relay" -eq 1 ]; then
+      ok "relay calisiyor (127.0.0.1:443)"
+      act "/etc/hosts: $(echo $RELAY_HOSTS | wc -w | tr -d ' ') alan -> 127.0.0.1 / ::1" write_hosts
+      ok "hosts guncellendi (yedek: $HOSTS_FILE.discord-dpi-bridge.bak)"
+    else
+      fail "relay baslamadi; /etc/hosts DEGISTIRILMEDI. log: $LOG_DIR/relay.log"
+    fi
+  else
+    info "(dry-run) /etc/hosts: $RELAY_HOSTS -> 127.0.0.1 / ::1"
+  fi
+fi
+
+# ---------- 7) DNS + DoH profili ----------
 if [ "$SKIP_DNS" -eq 1 ]; then
   warn "skip-dns: DNS ayarlarina dokunulmadi"
 else
@@ -268,7 +341,7 @@ profile = {
     "PayloadIdentifier": ident,
     "PayloadUUID": str(uuid.uuid4()).upper(),
     "PayloadVersion": 1,
-    "PayloadScope": "User",
+    "PayloadScope": "System",
     "PayloadDisplayName": "discord-dpi-bridge: DNS over HTTPS",
     "PayloadDescription": "Sistem DNS sorgularini sifreli (DoH) olarak Cloudflare'a gonderir; operatorun DNS engelini atlar. uninstall.sh ile kaldirilir.",
     "PayloadOrganization": "discord-dpi-bridge",
@@ -281,7 +354,7 @@ PY
   }
   act "DoH profili uret -> $DOH_PROFILE" write_doh_profile
   if [ "$DRY" -eq 0 ]; then
-    if profiles list 2>/dev/null | grep -q "$DOH_PROFILE_ID"; then
+    if doh_profile_installed; then
       ok "DoH profili zaten yuklu"
     else
       open "$DOH_PROFILE" || true
@@ -293,13 +366,13 @@ PY
       if [ "$YES" -eq 0 ]; then
         printf '   Profili yukledikten sonra Enter'"'"'a bas (atlamak icin de Enter): '; read -r _
       fi
-      if profiles list 2>/dev/null | grep -q "$DOH_PROFILE_ID"; then ok "DoH profili yuklendi"
+      if doh_profile_installed; then ok "DoH profili yuklendi"
       else warn "DoH profili henuz yuklu degil. DNS engeli olan operatorlerde Discord acilmayabilir; profili sonra da yukleyebilirsin: open \"$DOH_PROFILE\""; fi
     fi
   fi
 fi
 
-# ---------- 7) dogrula ----------
+# ---------- 8) dogrula ----------
 if [ "$DRY" -eq 1 ]; then
   printf '\n%sDry-run bitti; degisiklik yapilmadi.%s\n' "$C_YEL" "$C_OFF"
   exit 0
@@ -309,5 +382,5 @@ rc=0
 bash "$MACOS_DIR/status.sh" || rc=$?
 echo
 info "Discord acikti ise TAMAMEN kapat (Cmd+Q, menu cubugundaki simgeden de Cikis) ve tekrar ac."
-info "Discord'a hicbir bayrak/kisayol gerekmez; sistem proxy ayarini kendisi kullanir."
+info "Discord'a hicbir bayrak/kisayol gerekmez; uygulama PAC'i, guncelleyicisi relay'i kullanir."
 exit $rc

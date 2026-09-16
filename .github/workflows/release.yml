@@ -26,7 +26,7 @@ jobs:
       - name: bash -n / python -m py_compile / json
         run: |
           for f in macos/*.sh; do bash -n "$f"; done
-          python3 -m py_compile macos/pac-server.py
+          python3 -m py_compile macos/pac-server.py macos/relay.py
           python3 -c 'import json; json.load(open("config.json"))'
       - name: shellcheck
         run: |

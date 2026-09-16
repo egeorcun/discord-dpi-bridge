@@ -41,9 +41,14 @@
   },
 
   "macos": {
-    "_aciklama": "Yalnizca macOS (macos/install.sh). proxy_domains: PAC ile ByeDPI'ye yonlendirilen alan adlari (alt alanlar dahil); geri kalan trafik dogrudan gider. byedpi_args bos ise byedpi.args kullanilir. pac_port: proxy.pac'in 127.0.0.1'de sunuldugu port.",
+    "_aciklama": "Yalnizca macOS (macos/install.sh). proxy_domains: PAC ile ByeDPI'ye yonlendirilen alan adlari (alt alanlar dahil); geri kalan trafik dogrudan gider. byedpi_args bos ise byedpi.args kullanilir. pac_port: proxy.pac'in 127.0.0.1'de sunuldugu port. relay_hosts: Discord guncelleyicisi (Rust) sistem proxy/PAC'e uymaz; bu alanlar /etc/hosts ile 127.0.0.1'e cevrilir ve macos/relay.py (root LaunchDaemon, 443) uzerinden ByeDPI'ye tasinir.",
     "byedpi_args": "",
     "pac_port": 18080,
+    "relay_hosts": [
+      "updates.discord.com",
+      "stable.dl2.discordapp.net",
+      "dl.discordapp.net"
+    ],
     "proxy_domains": [
       "discord.com",
       "discordapp.com",

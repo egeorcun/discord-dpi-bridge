@@ -17,6 +17,12 @@ LOG_DIR="$APP_DIR/logs"
 NET_BACKUP="$APP_DIR/network-backup.txt"
 DOH_PROFILE="$APP_DIR/discord-dpi-bridge-doh.mobileconfig"
 AGENTS_DIR="$HOME/Library/LaunchAgents"
+# Guncelleyici koprusu root olarak calisir; betigi kullanicinin yazabilecegi bir yerden CALISTIRMA (yetki yukseltme).
+RELAY_SYS_DIR="/Library/Application Support/discord-dpi-bridge"
+RELAY_SCRIPT="$RELAY_SYS_DIR/relay.py"
+HOSTS_FILE="/etc/hosts"
+HOSTS_BEGIN="# >>> discord-dpi-bridge (uninstall.sh kaldirir)"
+HOSTS_END="# <<< discord-dpi-bridge"
 
 # ---- renkli cikti ----
 if [ -t 1 ]; then
@@ -46,6 +52,9 @@ refuse_root() {
 }
 
 # Xcode Command Line Tools: derleyici + git + python3 buradan gelir.
+# DoH profili sistem (aygit) kapsaminda yuklenir; `profiles list` sudo'suz yalnizca kullanici profillerini gosterir,
+# system_profiler ise sudo'suz aygit profillerini de listeler.
+doh_profile_installed() { system_profiler SPConfigurationProfileDataType 2>/dev/null | grep -q "Identifier: $DOH_PROFILE_ID$"; }
 have_clt() { xcode-select -p >/dev/null 2>&1 && [ -x /usr/bin/python3 ] && /usr/bin/python3 -c 'import sys' >/dev/null 2>&1; }
 
 # ---- config.json okuma (python3 ile; noktali anahtar: cfg socks.port) ----
@@ -88,6 +97,10 @@ load_cfg() {
   LABEL_PAC="$LABEL_PREFIX.pac"
   PLIST_BYEDPI="$AGENTS_DIR/$LABEL_BYEDPI.plist"
   PLIST_PAC="$AGENTS_DIR/$LABEL_PAC.plist"
+  LABEL_RELAY="$LABEL_PREFIX.relay"
+  PLIST_RELAY="/Library/LaunchDaemons/$LABEL_RELAY.plist"
+  RELAY_HOSTS="$(cfg macos.relay_hosts)"
+  [ -n "$RELAY_HOSTS" ] || RELAY_HOSTS="updates.discord.com stable.dl2.discordapp.net dl.discordapp.net"
   DOH_PROFILE_ID="$LABEL_PREFIX.doh"
   PAC_URL="http://127.0.0.1:$PAC_PORT/proxy.pac"
 }
@@ -111,8 +124,24 @@ primary_service() {
 
 # ---- launchd ----
 agent_loaded() { launchctl print "gui/$(id -u)/$1" >/dev/null 2>&1; }
-agent_bootout() { launchctl bootout "gui/$(id -u)/$1" >/dev/null 2>&1 || true; }
-agent_bootstrap() {
-  # $1 = plist yolu
-  launchctl bootstrap "gui/$(id -u)" "$1" 2>/dev/null || launchctl load -w "$1" 2>/dev/null
+# bootout asenkron: servis tamamen kalkmadan bootstrap edilirse "5: Input/output error" verir. Kalkmasini bekle.
+agent_bootout() {
+  launchctl bootout "gui/$(id -u)/$1" >/dev/null 2>&1 || true
+  local i=0
+  while agent_loaded "$1" && [ $i -lt 20 ]; do sleep 0.5; i=$((i+1)); done
 }
+agent_bootstrap() {
+  # $1 = plist yolu; gecici hatalara karsi birkac kez dene
+  local i
+  for i in 1 2 3 4 5; do
+    launchctl bootstrap "gui/$(id -u)" "$1" 2>/dev/null && return 0
+    sleep 1
+  done
+  launchctl load -w "$1" 2>/dev/null
+}
+
+# ---- hosts blogu (guncelleyici alanlari -> loopback -> relay) ----
+hosts_without_block() { sed "/^$HOSTS_BEGIN\$/,/^$HOSTS_END\$/d" "$HOSTS_FILE"; }
+hosts_has_block() { grep -qxF "$HOSTS_BEGIN" "$HOSTS_FILE" 2>/dev/null; }
+relay_running() { pgrep -f "$RELAY_SCRIPT" >/dev/null 2>&1 && nc -z 127.0.0.1 443 >/dev/null 2>&1; }
+flush_dns() { dscacheutil -flushcache 2>/dev/null || true; sudo killall -HUP mDNSResponder 2>/dev/null || true; }

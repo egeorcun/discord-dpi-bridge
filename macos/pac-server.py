@@ -10,7 +10,7 @@ hangi yol istenirse istensin ayni PAC dosyasini doner, hicbir sey loglamaz.
 Kullanim: python3 pac-server.py <port> <proxy.pac>
 """
 import sys
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 18080
 PAC_PATH = sys.argv[2] if len(sys.argv) > 2 else "proxy.pac"
@@ -18,13 +18,16 @@ PAC_PATH = sys.argv[2] if len(sys.argv) > 2 else "proxy.pac"
 
 class PacHandler(BaseHTTPRequestHandler):
     server_version = "discord-dpi-bridge-pac/1.0"
-    protocol_version = "HTTP/1.1"
+    # macOS'un PAC istemcisi baglantiyi acik tutar; tek istek + kapat, zaman asimi ile.
+    protocol_version = "HTTP/1.0"
+    timeout = 5
 
     def _send(self, body: bytes) -> None:
         self.send_response(200)
         self.send_header("Content-Type", "application/x-ns-proxy-autoconfig")
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-cache")
+        self.send_header("Connection", "close")
         self.end_headers()
 
     def do_GET(self) -> None:  # noqa: N802
@@ -35,7 +38,10 @@ class PacHandler(BaseHTTPRequestHandler):
             self.send_error(404, "proxy.pac yok")
             return
         self._send(body)
-        self.wfile.write(body)
+        try:
+            self.wfile.write(body)
+        except (BrokenPipeError, ConnectionResetError):
+            pass
 
     def do_HEAD(self) -> None:  # noqa: N802
         try:
@@ -51,4 +57,6 @@ class PacHandler(BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
-    HTTPServer(("127.0.0.1", PORT), PacHandler).serve_forever()
+    # Coklu is parcacigi: bir istemcinin asili baglantisi digerlerini bloklamasin.
+    ThreadingHTTPServer.daemon_threads = True
+    ThreadingHTTPServer(("127.0.0.1", PORT), PacHandler).serve_forever()

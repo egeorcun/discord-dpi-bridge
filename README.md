@@ -66,13 +66,13 @@ bash macos/install.sh
 ```
 
 - **Xcode Command Line Tools** yoksa macOS kurmayı teklif eder. Kurulunca komutu tekrar çalıştır.
-- Parolanı **bir kez** ister (ağ ayarı için). Komutun başına `sudo` **yazma**.
+- Parolanı ister (ağ ayarı, `/etc/hosts` ve güncelleyici köprüsü için). Komutun başına `sudo` **yazma**.
 - Sonda bir **DNS profili** açılır: **Sistem Ayarları → Genel → Aygıt Yönetimi** → "discord-dpi-bridge: DNS over HTTPS" → **Yükle**.
 
 ### 2) Bitince
 Discord açıksa **tamamen kapat** (Cmd+Q) ve tekrar aç. Bitti. 🎉
 
-Her açılışta kendiliğinden çalışır. Kısayol veya ayar gerekmez; Discord güncellemeleri bozmaz.
+Her açılışta kendiliğinden çalışır. Kısayol veya ayar gerekmez; Discord güncellemeleri bozmaz. Hâlâ "Update failed" görürsen `bash macos/status.sh` çıktısına bak.
 
 ### Kontrol / kaldır
 
@@ -81,7 +81,7 @@ bash macos/status.sh      # çalışıyor mu? hepsi [OK] olmalı
 bash macos/uninstall.sh   # her şeyi geri al
 ```
 
-> ⚠️ macOS sürümü **gerçek bir Mac'te henüz doğrulanmadı.** Sorun görürsen `status.sh` çıktısıyla [issue aç](https://github.com/egeorcun/discord-dpi-bridge/issues). Ayrıntılar ve seçenekler: **[macos/README.md](macos/README.md)**.
+> ⚠️ macOS sürümü az sayıda gerçek Mac'te denendi. Sorun görürsen `status.sh` çıktısıyla [issue aç](https://github.com/egeorcun/discord-dpi-bridge/issues). Ayrıntılar ve seçenekler: **[macos/README.md](macos/README.md)**.
 
 ---
 
@@ -103,8 +103,9 @@ GoodbyeDPI gibi araçlar engeli **çekirdek sürücüsüyle** (WinDivert) aşar;
 
 **macOS**
 1. **ByeDPI** — kaynaktan derlenir, LaunchAgent olarak çalışır.
-2. **PAC dosyası** — yalnızca Discord alanlarını proxy'ye yönlendiren sistem proxy ayarı. macOS'ta Discord da güncelleyicisi de buna uyar; hosts, kısayol ve gözcü gerekmez.
-3. **DNS over HTTPS profili** — operatörün DNS engelini atlar.
+2. **PAC dosyası** — yalnızca Discord alanlarını proxy'ye yönlendiren sistem proxy ayarı; Discord uygulaması buna uyar, kısayol ve gözcü gerekmez.
+3. **relay.py** — Discord'un güncelleyicisi proxy/PAC ayarını okumaz; güncelleme alanları hosts ile yerel köprüye çevrilip ByeDPI'den geçirilir.
+4. **DNS over HTTPS profili** — operatörün DNS engelini atlar.
 
 Her şey geri alınabilir; `uninstall` betikleri eski ayarları yedekten döndürür.
 
@@ -114,7 +115,7 @@ Her şey geri alınabilir; `uninstall` betikleri eski ayarları yedekten döndü
 
 - Bu depo **hiçbir çalıştırılabilir dosya taşımaz.** Windows'ta `ciadpi.exe` kurulumda [ByeDPI'nin resmi sürümünden](https://github.com/hufrea/byedpi/releases) iner; macOS'ta ByeDPI senin Mac'inde resmi kaynağından derlenir. Geri kalan her şey açık, okunabilir metin dosyasıdır.
 - **Antivirüs "PUA/Riskware" derse:** ByeDPI bir engel-aşma aracı olduğu için bazı antivirüsler onu bu kategoriyle işaretler; bu bir virüs tespiti değildir. Windows Defender `ciadpi.exe`'yi silerse: Windows Güvenliği → Koruma geçmişi → **"Cihazda izin ver"**, sonra `install.ps1`'i tekrar çalıştır.
-- Çalışırken hiçbir şey yönetici/root değildir. Yönetici izni yalnızca kurulumda (hosts, DNS, proxy ayarı) istenir.
+- Yönetici izni yalnızca kurulumda (hosts, DNS, proxy ayarı) istenir. Windows'ta çalışırken hiçbir şey yönetici değildir; macOS'ta güncelleyici köprüsü 443 portunu açmak için root başlar ve hemen `nobody` kullanıcısına düşer.
 
 **VirusTotal (ByeDPI ikilisi, v0.17.3):**
 `ciadpi.exe` — SHA-256 `eb53ceeeb981cc6735ac24bb1e51e725280b86630e80fdf19ddc4ee4a5b54ef4`
@@ -132,11 +133,12 @@ Her şey geri alınabilir; `uninstall` betikleri eski ayarları yedekten döndü
 | `status.ps1` | `d1f535f6341e13805adbec4919fe8ecfc0ed53673c878348bb9cada9dbf4a703` |
 | `fix-discord.ps1` | `2f195dbca2a222ff97e852f4069ab69f1f98e316f989fe587038bea9053c558e` |
 | `config.json` | `0db3eadc2b76f9d00d2aad67e106180d9845424cbe6ddb4975d24961c6336596` |
-| `macos/install.sh` | `b00f5378f9be1d9b83dc4d47fac06957168cdf3bf3774e1a345fd34c47b4b29e` |
-| `macos/uninstall.sh` | `ad33dda1d1d73622bd9d621c892a5d1e4d3b1ea4c64a06b8074c2c95255082a4` |
-| `macos/status.sh` | `376e64a0148d309e6a85348acb9cba75019c07bfb1e8ca1759b37a0974ff3b9d` |
-| `macos/lib.sh` | `c01577ff6dafad61c06a27df8d6e6b96f99c4a7e4bb0cb663be2ad2cd06e05a3` |
-| `macos/pac-server.py` | `76fe793c7ebfaf3bffcfc53c7032c0866695f95d9c53ddd91280163cb662a57f` |
+| `macos/install.sh` | `192fa3eb86a6a01ba93c4cf1b7eff582ee3950956e97623888ffebfb2f055ef4` |
+| `macos/uninstall.sh` | `0d4179c5fe61640ee31b74c5d5471864a49bff9545e70301b5c2c6cab0c2e2c7` |
+| `macos/status.sh` | `bfcbee809bdde54282bbf46d04a18822dc9b72bba7463c8e91e724e696eeed80` |
+| `macos/lib.sh` | `6770e354f2440755e8fe9568405ff8377ebb13a6447631d49a9fb4e472879dee` |
+| `macos/pac-server.py` | `360ec0a25f67f8361cdc90853c1be485a5e554b6a15c840faf65d21c3fe7f41f` |
+| `macos/relay.py` | `6a75f3e93abb84c7192bcf1ff4e319fcf3cb66088a797c0bd7eb19b67e45debc` |
 
 Windows: `Get-FileHash .\dosya -Algorithm SHA256` · macOS: `shasum -a 256 macos/dosya`. Metin dosyalarının hash'i satır sonu ayarına duyarlıdır; en güvenilir doğrulama `ciadpi.exe`'dir.
 </details>

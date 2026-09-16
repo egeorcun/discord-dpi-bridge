@@ -40,7 +40,16 @@ else row bad "port $SOCKS_PORT dinleniyor" "hayir"; fi
 head1 "PAC (yalnizca Discord alanlari proxy'ye)"
 if [ -f "$PAC_FILE" ]; then row ok "proxy.pac" "$(grep -c 'dnsDomainIs' "$PAC_FILE") alan"; else row bad "proxy.pac" "yok"; fi
 if agent_loaded "$LABEL_PAC"; then row ok "LaunchAgent $LABEL_PAC" "yuklu"; else row bad "LaunchAgent $LABEL_PAC" "yuklu degil"; fi
-if curl -fsS -m 3 "$PAC_URL" 2>/dev/null | grep -q FindProxyForURL; then row ok "PAC sunucusu" "$PAC_URL"; else row bad "PAC sunucusu" "$PAC_URL cevap vermiyor"; fi
+if curl -fsS -m 3 --noproxy '*' "$PAC_URL" 2>/dev/null | grep -q FindProxyForURL; then row ok "PAC sunucusu" "$PAC_URL"; else row bad "PAC sunucusu" "$PAC_URL cevap vermiyor"; fi
+
+# --- 2b) Guncelleyici koprusu
+head1 "Guncelleyici koprusu (Discord updater PAC'e uymaz)"
+if [ -f "$PLIST_RELAY" ]; then row ok "LaunchDaemon $LABEL_RELAY" "kurulu"; else row bad "LaunchDaemon $LABEL_RELAY" "yok -> install.sh"; fi
+if relay_running; then row ok "relay" "127.0.0.1:443 dinleniyor"; else row bad "relay" "calismiyor (log: $LOG_DIR/relay.log)"; fi
+if hosts_has_block; then
+  miss=""; for h in $RELAY_HOSTS; do grep -qE "^127\.0\.0\.1[[:space:]]+$h\$" "$HOSTS_FILE" || miss="$miss $h"; done
+  if [ -z "$miss" ]; then row ok "/etc/hosts" "$(echo $RELAY_HOSTS | wc -w | tr -d ' ') alan -> 127.0.0.1"; else row bad "/etc/hosts" "eksik:$miss -> install.sh"; fi
+else row bad "/etc/hosts" "girdi yok -> install.sh"; fi
 
 # --- 3) Sistem proxy
 head1 "Sistem proxy ayari"
@@ -67,7 +76,7 @@ if [ -n "$prim" ]; then
   hit=0; for s in $DNS_V4; do case " $dns " in *" $s "*) hit=1 ;; esac; done
   if [ "$hit" -eq 1 ]; then row ok "'$prim' DNS sunuculari" "$dns"; else row bad "'$prim' DNS sunuculari" "${dns:-otomatik} -> install.sh"; fi
 fi
-if profiles list 2>/dev/null | grep -q "$DOH_PROFILE_ID"; then row ok "DoH profili" "yuklu"
+if doh_profile_installed; then row ok "DoH profili" "yuklu"
 else row bad "DoH profili" "yuklu degil -> open \"$DOH_PROFILE\" ve Sistem Ayarlari'ndan yukle"; fi
 
 # --- 5) Ag testleri
@@ -75,9 +84,10 @@ if [ "$NO_NET" -eq 0 ]; then
   head1 "Ag testleri"
   t1="$(curl -s -m 15 -o /dev/null -w '%{http_code}' --socks5-hostname "$SOCKS_HOST:$SOCKS_PORT" 'https://discord.com/api/v9/gateway' 2>/dev/null || true)"
   if [ "$t1" = "200" ]; then row ok "discord.com (SOCKS5 uzerinden)" "HTTP $t1"; else row bad "discord.com (SOCKS5 uzerinden)" "HTTP $t1 -> ByeDPI parametreleri (config.json byedpi.args) operatorune uymuyor olabilir"; fi
-  t2="$(curl -s -m 15 -o /dev/null -w '%{http_code}' --socks5-hostname "$SOCKS_HOST:$SOCKS_PORT" 'https://discord.com/api/updates/stable?platform=osx&version=0.0.1' 2>/dev/null || true)"
-  case "$t2" in 2*|3*) row ok "guncelleme sunucusu (SOCKS5 uzerinden)" "HTTP $t2" ;; *) row bad "guncelleme sunucusu (SOCKS5 uzerinden)" "HTTP $t2" ;; esac
-  t3="$(curl -s -m 10 -o /dev/null -w '%{http_code}' 'https://discord.com/' 2>/dev/null || true)"
+  # guncelleyicinin yaptigi gibi: proxy'siz, sistem cozumleyicisi (hosts -> relay) ile
+  t2="$(curl --noproxy '*' -s -m 15 -o /dev/null -w '%{http_code}' 'https://updates.discord.com/distributions/app/manifests/latest?channel=stable&platform=osx&arch=arm64' 2>/dev/null || true)"
+  case "$t2" in 2*|3*) row ok "guncelleme sunucusu (relay uzerinden)" "HTTP $t2" ;; *) row bad "guncelleme sunucusu (relay uzerinden)" "HTTP $t2 -> Discord 'Update failed' der" ;; esac
+  t3="$(curl --noproxy '*' -s -m 10 -o /dev/null -w '%{http_code}' 'https://discord.com/' 2>/dev/null || true)"
   if [ "$t3" = "200" ]; then row info "discord.com (dogrudan, bilgi)" "HTTP 200 (ECH/DoH sayesinde olabilir)"; else row info "discord.com (dogrudan, bilgi)" "HTTP $t3 (engelli - beklenen)"; fi
   # DNS zehirlenmesi: sistem cozumleyicisi (DoH profili dahil) vs. dogrudan DoH sorgusu
   sys_ips="$(dscacheutil -q host -a name discord.com 2>/dev/null | awk '/^ip_address/{print $2}' | sort -u)"

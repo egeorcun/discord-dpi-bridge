@@ -66,13 +66,13 @@ bash macos/install.sh
 ```
 
 - If **Xcode Command Line Tools** are missing, macOS offers to install them. Run the command again afterwards.
-- It asks for your password **once** (network settings). Do **not** prefix the command with `sudo`.
+- It asks for your password (network settings, `/etc/hosts` and the updater bridge). Do **not** prefix the command with `sudo`.
 - At the end a **DNS profile** opens: **System Settings → General → Device Management** → "discord-dpi-bridge: DNS over HTTPS" → **Install**.
 
 ### 2) When it finishes
 If Discord is open, **quit it completely** (Cmd+Q) and reopen it. Done. 🎉
 
-It starts automatically at every login. No shortcut or flag needed; Discord updates can't break it.
+It starts automatically at every login. No shortcut or flag needed; Discord updates can't break it. Still seeing "Update failed"? Check `bash macos/status.sh`.
 
 ### Check / uninstall
 
@@ -81,7 +81,7 @@ bash macos/status.sh      # is it working? everything should be [OK]
 bash macos/uninstall.sh   # revert everything
 ```
 
-> ⚠️ The macOS version is **not yet verified on a real Mac.** If something breaks, [open an issue](https://github.com/egeorcun/discord-dpi-bridge/issues) with the `status.sh` output. Details and options: **[macos/README.en.md](macos/README.en.md)**.
+> ⚠️ The macOS version has been tried on only a few real Macs. If something breaks, [open an issue](https://github.com/egeorcun/discord-dpi-bridge/issues) with the `status.sh` output. Details and options: **[macos/README.en.md](macos/README.en.md)**.
 
 ---
 
@@ -103,8 +103,9 @@ Tools like GoodbyeDPI bypass the block with a **kernel driver** (WinDivert); ant
 
 **macOS**
 1. **ByeDPI** — built from source, runs as a LaunchAgent.
-2. **PAC file** — a system proxy setting that sends only Discord domains to the proxy. On macOS both Discord and its updater honour it, so no hosts, shortcut or guard is needed.
-3. **DNS over HTTPS profile** — gets past the ISP's DNS block.
+2. **PAC file** — a system proxy setting that sends only Discord domains to the proxy; the Discord app honours it, so no shortcut or guard is needed.
+3. **relay.py** — Discord's updater ignores proxy/PAC settings, so its update domains are pointed at a local bridge via the hosts file and carried through ByeDPI.
+4. **DNS over HTTPS profile** — gets past the ISP's DNS block.
 
 Everything is reversible; the `uninstall` scripts restore the previous settings from a backup.
 
@@ -114,7 +115,7 @@ Everything is reversible; the `uninstall` scripts restore the previous settings 
 
 - This repo ships **no executables.** On Windows, `ciadpi.exe` is downloaded during install from [ByeDPI's official release](https://github.com/hufrea/byedpi/releases); on macOS, ByeDPI is built on your Mac from its official source. Everything else is open, readable text.
 - **If your antivirus says "PUA/Riskware":** ByeDPI is a circumvention tool, so some scanners flag it under that category; it is not a virus detection. If Windows Defender removes `ciadpi.exe`: Windows Security → Protection history → **"Allow on device"**, then run `install.ps1` again.
-- Nothing runs as admin/root. Admin rights are requested only during install (hosts, DNS, proxy settings).
+- Admin rights are requested only during install (hosts, DNS, proxy settings). On Windows nothing runs as admin afterwards; on macOS the updater bridge starts as root to open port 443 and immediately drops to the `nobody` user.
 
 **VirusTotal (ByeDPI binary, v0.17.3):**
 `ciadpi.exe` — SHA-256 `eb53ceeeb981cc6735ac24bb1e51e725280b86630e80fdf19ddc4ee4a5b54ef4`
@@ -132,11 +133,12 @@ Everything is reversible; the `uninstall` scripts restore the previous settings 
 | `status.ps1` | `d1f535f6341e13805adbec4919fe8ecfc0ed53673c878348bb9cada9dbf4a703` |
 | `fix-discord.ps1` | `2f195dbca2a222ff97e852f4069ab69f1f98e316f989fe587038bea9053c558e` |
 | `config.json` | `0db3eadc2b76f9d00d2aad67e106180d9845424cbe6ddb4975d24961c6336596` |
-| `macos/install.sh` | `b00f5378f9be1d9b83dc4d47fac06957168cdf3bf3774e1a345fd34c47b4b29e` |
-| `macos/uninstall.sh` | `ad33dda1d1d73622bd9d621c892a5d1e4d3b1ea4c64a06b8074c2c95255082a4` |
-| `macos/status.sh` | `376e64a0148d309e6a85348acb9cba75019c07bfb1e8ca1759b37a0974ff3b9d` |
-| `macos/lib.sh` | `c01577ff6dafad61c06a27df8d6e6b96f99c4a7e4bb0cb663be2ad2cd06e05a3` |
-| `macos/pac-server.py` | `76fe793c7ebfaf3bffcfc53c7032c0866695f95d9c53ddd91280163cb662a57f` |
+| `macos/install.sh` | `192fa3eb86a6a01ba93c4cf1b7eff582ee3950956e97623888ffebfb2f055ef4` |
+| `macos/uninstall.sh` | `0d4179c5fe61640ee31b74c5d5471864a49bff9545e70301b5c2c6cab0c2e2c7` |
+| `macos/status.sh` | `bfcbee809bdde54282bbf46d04a18822dc9b72bba7463c8e91e724e696eeed80` |
+| `macos/lib.sh` | `6770e354f2440755e8fe9568405ff8377ebb13a6447631d49a9fb4e472879dee` |
+| `macos/pac-server.py` | `360ec0a25f67f8361cdc90853c1be485a5e554b6a15c840faf65d21c3fe7f41f` |
+| `macos/relay.py` | `6a75f3e93abb84c7192bcf1ff4e319fcf3cb66088a797c0bd7eb19b67e45debc` |
 
 Windows: `Get-FileHash .\file -Algorithm SHA256` · macOS: `shasum -a 256 macos/file`. Text-file hashes depend on line-ending settings; the most reliable check is `ciadpi.exe`.
 </details>

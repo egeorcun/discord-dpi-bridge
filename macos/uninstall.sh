@@ -1,6 +1,7 @@
 #!/bin/bash
 # discord-dpi-bridge / macOS - kaldirma. install.sh'in yaptigi her seyi geri alir:
 #  - ByeDPI ve PAC LaunchAgent'larini durdurur ve siler
+#  - Guncelleyici koprusunu (relay LaunchDaemon) durdurur, /etc/hosts blogunu kaldirir
 #  - Sistem proxy ayarini (PAC / SOCKS) yedekten geri yukler
 #  - DNS sunucularini yedekten geri yukler, DoH profilini kaldirir (--keep-dns ile korunur)
 #  - Kurulum klasorunu siler (sorar)
@@ -39,6 +40,26 @@ rm -f "$PLIST_BYEDPI" "$PLIST_PAC"
 pkill -f "$BYEDPI_BIN" 2>/dev/null || true
 pkill -f "$PAC_SERVER" 2>/dev/null || true
 ok "ByeDPI ve PAC sunucusu durduruldu, acilis girdileri silindi"
+
+step "Guncelleyici koprusu (relay + /etc/hosts)"
+if hosts_has_block || [ -f "$PLIST_RELAY" ] || [ -d "$RELAY_SYS_DIR" ]; then
+  info "yonetici parolasi gerekiyor."
+  sudo -v
+  if hosts_has_block; then
+    tmp="$(mktemp -t discord-dpi-bridge-hosts)"
+    hosts_without_block > "$tmp" && sudo cp "$tmp" "$HOSTS_FILE"
+    rm -f "$tmp"
+    ok "/etc/hosts blogu kaldirildi"
+  fi
+  sudo launchctl bootout "system/$LABEL_RELAY" >/dev/null 2>&1 || true
+  sudo rm -f "$PLIST_RELAY"
+  sudo rm -rf "$RELAY_SYS_DIR"
+  sudo rm -f "$HOSTS_FILE.discord-dpi-bridge.bak"
+  flush_dns
+  ok "relay durduruldu ve silindi"
+else
+  info "kurulu degil"
+fi
 
 services="$(network_services)"
 if [ -n "$services" ]; then
@@ -95,8 +116,8 @@ fi
 step "DNS over HTTPS profili"
 if [ "$KEEP_DNS" -eq 1 ]; then
   info "keep-dns: profil korunuyor"
-elif profiles list 2>/dev/null | grep -q "$DOH_PROFILE_ID"; then
-  if profiles remove -identifier "$DOH_PROFILE_ID" >/dev/null 2>&1; then
+elif doh_profile_installed; then
+  if sudo profiles remove -identifier "$DOH_PROFILE_ID" >/dev/null 2>&1; then
     ok "profil kaldirildi"
   else
     warn "Profil komutla kaldirilamadi. Elle: Sistem Ayarlari -> Genel -> Aygit Yonetimi -> 'discord-dpi-bridge: DNS over HTTPS' -> Sil"
