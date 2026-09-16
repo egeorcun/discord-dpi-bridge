@@ -1,6 +1,7 @@
 #!/bin/bash
 # discord-dpi-bridge / macOS - ortak yardimcilar (install.sh, uninstall.sh, status.sh kaynak alir)
 # macOS'un yerlesik bash 3.2'si ile uyumlu tutulur: dizi-sozluk, mapfile, ${var,,} YOK.
+# shellcheck disable=SC2034  # degiskenler bu dosyayi kaynak alan betiklerde kullanilir
 
 MACOS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "$MACOS_DIR/.." && pwd)"

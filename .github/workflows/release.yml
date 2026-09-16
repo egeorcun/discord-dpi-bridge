@@ -1,0 +1,84 @@
+# Surum paketleri: bir "vX.Y.Z" etiketi push edilince Windows ve macOS icin ayri zip'ler uretir
+# ve GitHub Release'e ekler. Release yoksa TASLAK olarak acar (notlari sen yazip yayimlarsin);
+# varsa (once GitHub'dan olusturduysan) sadece dosyalari ekler.
+#
+# Elle de calistirilabilir: Actions -> Release -> Run workflow (tag alani).
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Etiket (orn. v1.1.0). Release bu etikete eklenir.'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  check:
+    name: Betik kontrolu
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: bash -n / python -m py_compile / json
+        run: |
+          for f in macos/*.sh; do bash -n "$f"; done
+          python3 -m py_compile macos/pac-server.py
+          python3 -c 'import json; json.load(open("config.json"))'
+      - name: shellcheck
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck >/dev/null
+          shellcheck -x -s bash --severity=warning macos/*.sh
+
+  package:
+    name: Paketle ve yayimla
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Etiketi belirle
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then TAG="${{ github.event.inputs.tag }}"; else TAG="${GITHUB_REF_NAME}"; fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Zip'leri uret
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          out=dist; rm -rf "$out"; mkdir -p "$out"
+          common="config.json LICENSE README.md README.en.md"
+
+          # Windows: dosyalar zip kokunde (README'deki 'klasoru ac -> install.ps1' anlatimi icin)
+          w="$out/discord-dpi-bridge-windows-$TAG"; mkdir -p "$w"
+          cp $common *.ps1 "$w/"
+          (cd "$w" && zip -qr "../discord-dpi-bridge-windows-$TAG.zip" .)
+
+          # macOS: config.json kokte, betikler macos/ altinda ('bash macos/install.sh' aynen calisir)
+          m="$out/discord-dpi-bridge-macos-$TAG"; mkdir -p "$m/macos"
+          cp $common "$m/"
+          cp macos/*.sh macos/*.py macos/README.md macos/README.en.md "$m/macos/"
+          (cd "$m" && zip -qr "../discord-dpi-bridge-macos-$TAG.zip" .)
+
+          rm -rf "$w" "$m"
+          (cd "$out" && sha256sum *.zip > SHA256SUMS.txt && cat SHA256SUMS.txt)
+
+      - name: Release'e ekle (yoksa taslak olarak ac)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" dist/* --clobber --repo "$GITHUB_REPOSITORY"
+            echo "Var olan release'e eklendi: $TAG"
+          else
+            gh release create "$TAG" dist/* --draft --title "$TAG" --repo "$GITHUB_REPOSITORY" \
+              --notes "$(printf '**Indir:**\n- Windows: `discord-dpi-bridge-windows-%s.zip`\n- macOS: `discord-dpi-bridge-macos-%s.zip`\n\n_(Surum notlarini buraya yaz, sonra yayimla.)_' "$TAG" "$TAG")"
+            echo "Taslak release acildi: $TAG (notlari yazip yayimla)"
+          fi

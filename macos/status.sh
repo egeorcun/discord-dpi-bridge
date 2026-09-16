@@ -3,6 +3,7 @@
 # Her bileseni tek tek test eder; cikis kodu 0 = her sey yolunda, 1 = sorun var.
 # Kullanim: bash macos/status.sh [--no-network]
 set -uo pipefail
+# shellcheck source=lib.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 need_macos
 NO_NET=0
@@ -84,9 +85,9 @@ if [ "$NO_NET" -eq 0 ]; then
     | /usr/bin/python3 -c 'import json,sys; [print(a["data"]) for a in json.load(sys.stdin).get("Answer",[]) if a.get("type")==1]' 2>/dev/null | sort -u)"
   if [ -z "$sys_ips" ] || [ -z "$real_ips" ]; then row info "DNS karsilastirma" "yapilamadi"
   else
-    poison=""
-    for ip in $sys_ips; do case " $(echo $real_ips) " in *" $ip "*) ;; *) poison="$poison $ip" ;; esac; done
-    if [ -z "$poison" ]; then row ok "DNS zehirlenmesi" "yok (sistem = DoH)"; else row bad "DNS zehirlenmesi" "sistem$poison donuyor, gercek: $(echo $real_ips)"; fi
+    poison=""; real_flat="${real_ips//$'\n'/ }"
+    for ip in $sys_ips; do case " $real_flat " in *" $ip "*) ;; *) poison="$poison $ip" ;; esac; done
+    if [ -z "$poison" ]; then row ok "DNS zehirlenmesi" "yok (sistem = DoH)"; else row bad "DNS zehirlenmesi" "sistem$poison donuyor, gercek: $real_flat"; fi
   fi
 fi
 

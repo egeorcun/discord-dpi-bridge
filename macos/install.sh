@@ -21,7 +21,9 @@
 #   --system-socks      PAC yerine sistem geneli SOCKS proxy ayarla (tum uygulamalar ByeDPI'den gecer;
 #                       guncelleyici PAC'e uymuyorsa yedek yol)
 #   --byedpi-tag vX.Y.Z Belirli bir ByeDPI surumu (bos = en yeni)
+# shellcheck disable=SC2329  # fonksiyonlar act() uzerinden dolayli cagrilir
 set -euo pipefail
+# shellcheck source=lib.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 
 YES=0; DRY=0; SKIP_DNS=0; SKIP_PROXY=0; SYSTEM_SOCKS=0; BYEDPI_TAG=""
@@ -212,7 +214,7 @@ if [ "$SKIP_PROXY" -eq 0 ] || [ "$SKIP_DNS" -eq 0 ]; then
       dns="$(networksetup -getdnsservers "$svc" 2>/dev/null | tr '\n' ' ' | sed 's/ *$//')"
       case "$dns" in *"any DNS Servers"*|"") dns="empty" ;; esac
       # yedek yokken bizim degerlerimiz zaten yaziliysa (klasor silinip yeniden kurulmus) "eski ayar" diye kaydetme
-      [ "$dns" = "$(echo $DNS_V4 $DNS_V6)" ] && dns="empty"
+      [ "$dns" = "$DNS_V4${DNS_V6:+ $DNS_V6}" ] && dns="empty"
       pac="$(networksetup -getautoproxyurl "$svc" 2>/dev/null | awk -F': ' '/^URL/{u=$2} /^Enabled/{e=$2} END{print u "\t" e}')"
       socks="$(networksetup -getsocksfirewallproxy "$svc" 2>/dev/null | awk -F': ' '/^Enabled/{e=$2} /^Server/{s=$2} /^Port/{p=$2} END{print s "\t" p "\t" e}')"
       printf '%s\t%s\t%s\t%s\n' "$svc" "$dns" "$pac" "$socks" >> "$NET_BACKUP"
@@ -248,6 +250,7 @@ else
     act "'$svc': DNS = $DNS_V4 $DNS_V6" bash -c 'sudo networksetup -setdnsservers "$@"' _ "$svc" $DNS_V4 $DNS_V6
   done
   write_doh_profile() {
+    # shellcheck disable=SC2086  # DNS listeleri bilerek kelimelere ayrilir
     /usr/bin/python3 - "$DOH_PROFILE" "$DOH_PROFILE_ID" "$DNS_TEMPLATE" $DNS_V4 $DNS_V6 <<'PY'
 import plistlib, sys, uuid
 path, ident, url, *servers = sys.argv[1:]

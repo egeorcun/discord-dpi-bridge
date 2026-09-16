@@ -1,6 +1,6 @@
 # discord-dpi-bridge — macOS
 
-**Read this in other languages:** [Türkçe](README.md) · **English** · [Windows version](../README.en.md)
+**Read this in other languages:** [Türkçe](README.md) · **English** · [Main README](../README.en.md)
 
 Does what the Windows version does, on macOS: routes Discord past DPI blocking through [ByeDPI](https://github.com/hufrea/byedpi) running in user space, **with no kernel extension**. Only Discord domains go through the proxy; everything else is untouched.
 
@@ -15,7 +15,7 @@ Does what the Windows version does, on macOS: routes Discord past DPI blocking t
 git clone https://github.com/egeorcun/discord-dpi-bridge
 cd discord-dpi-bridge
 ```
-(or extract the [Releases](https://github.com/egeorcun/discord-dpi-bridge/releases/latest) zip and `cd` into it in Terminal.)
+(or download `discord-dpi-bridge-macos-vX.Y.Z.zip` from [Releases](https://github.com/egeorcun/discord-dpi-bridge/releases/latest), extract it and `cd` into it in Terminal.)
 
 ### 2) Install
 ```bash
@@ -87,10 +87,10 @@ The `macos` section of `config.json` lets you change the proxied domains (`proxy
 
 | File | SHA-256 |
 |---|---|
-| `install.sh` | `3c28025263506bef4d3a07c2128539a00c99d816fed6f6d84a7a5d90257b8919` |
-| `uninstall.sh` | `9e728fcacbcb7e96efa8ab52611330bee2ebb0fba1dd6e4f9ecba073149ab7e5` |
-| `status.sh` | `dff4db6ee3d43a5336af601dc98159280b45e78c17b51c87420de63e74b118f8` |
-| `lib.sh` | `851277011c89ea3de1a161a188205f3c2a4fdf3c8ed1a67c03ab1d33eeef885d` |
+| `install.sh` | `b00f5378f9be1d9b83dc4d47fac06957168cdf3bf3774e1a345fd34c47b4b29e` |
+| `uninstall.sh` | `ad33dda1d1d73622bd9d621c892a5d1e4d3b1ea4c64a06b8074c2c95255082a4` |
+| `status.sh` | `376e64a0148d309e6a85348acb9cba75019c07bfb1e8ca1759b37a0974ff3b9d` |
+| `lib.sh` | `c01577ff6dafad61c06a27df8d6e6b96f99c4a7e4bb0cb663be2ad2cd06e05a3` |
 | `pac-server.py` | `76fe793c7ebfaf3bffcfc53c7032c0866695f95d9c53ddd91280163cb662a57f` |
 
 Verify with `shasum -a 256 macos/<file>`.

@@ -2,100 +2,121 @@
 
 **Diğer dillerde oku:** **Türkçe** · [English](README.en.md)
 
-**Türkiye'de Discord'a giremiyor ama GoodbyeDPI açıkken ARC Raiders gibi oyunlar açılmıyor mu?** Bu araç ikisini birden çözer: Discord açılır, oyun da açılır — çünkü hiçbir çekirdek sürücüsü yüklemez, anti-cheat'ler rahatsız olmaz.
+**Türkiye'de Discord açılmıyor mu?** Bu araç Discord'u **çekirdek sürücüsü yüklemeden** engelden geçirir. Windows'ta GoodbyeDPI yüzünden açılmayan anti-cheat'li oyunlar (ARC Raiders vb.) da açılır. **Windows ve macOS**'ta çalışır.
+
+| | 🪟 Windows | 🍎 macOS |
+|---|---|---|
+| Gereken | Windows 10 (21H2+) / 11 | macOS 12+ (Intel veya Apple Silicon) |
+| Ek program | Yok | Xcode Command Line Tools (kurulum kendisi ister) |
+| Kur | `install.ps1` | `macos/install.sh` |
+| Kontrol | `status.ps1` | `macos/status.sh` |
+| Kaldır | `uninstall.ps1` | `macos/uninstall.sh` |
 
 ---
 
-## 🚀 Nasıl çalıştırılır (3 adım)
+## 📥 İndir
 
-### 1) İndir
-En kolayı: **[Releases sayfasından](https://github.com/egeorcun/discord-dpi-bridge/releases/latest)** `discord-dpi-bridge-vX.X.X.zip` dosyasını indir, sağ tıkla → **Tümünü ayıkla**.
+**[Releases sayfasından](https://github.com/egeorcun/discord-dpi-bridge/releases/latest)** kendi sistemine ait zip'i indir ve aç:
 
-> Git kullanıyorsan: `git clone https://github.com/egeorcun/discord-dpi-bridge`
+- 🪟 Windows → `discord-dpi-bridge-windows-vX.Y.Z.zip`
+- 🍎 macOS → `discord-dpi-bridge-macos-vX.Y.Z.zip`
 
-### 2) Kur
-Ayıkladığın klasörü aç. Boş bir yere **Shift + sağ tık** → **"PowerShell penceresini burada aç"**. Sonra şunu yapıştırıp Enter'a bas:
+Git kullanıyorsan (ikisi de aynı repoda):
+
+```bash
+git clone https://github.com/egeorcun/discord-dpi-bridge
+```
+
+---
+
+## 🪟 Windows
+
+### 1) Kur
+Klasörü aç, boş bir yere **Shift + sağ tık → "PowerShell penceresini burada aç"**, şunu yapıştır:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\install.ps1
 ```
 
-Ekranda **"Evet / Yönetici olarak çalıştır"** çıkarsa onayla. Kurulum her şeyi kendisi yapar (birkaç soru sorabilir, hepsine **E** diyebilirsin).
+"Yönetici olarak çalıştır" sorusuna **Evet** de. Sorduğu her şeye **E** diyebilirsin.
 
-### 3) Bitince
+### 2) Bitince
 - Kurulum "**yeniden başlat**" derse bilgisayarı yeniden başlat.
-- Sonra **Discord'u masaüstü kısayolundan aç.** Hepsi bu. 🎉
+- **Discord'u masaüstü kısayolundan aç.** Bitti. 🎉
 
-Bundan sonra her açılışta kendiliğinden çalışır; bir daha uğraşman gerekmez.
+Bundan sonra her açılışta kendiliğinden çalışır.
+
+### Kontrol / düzelt / kaldır
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\status.ps1        # çalışıyor mu? hepsi [OK] olmalı
+powershell -ExecutionPolicy Bypass -File .\fix-discord.ps1   # Discord bir gün açılmazsa (genelde gerekmez, gözcü kendi düzeltir)
+powershell -ExecutionPolicy Bypass -File .\uninstall.ps1     # her şeyi geri al
+```
 
 ---
 
-## ✅ Çalışıyor mu diye bakmak
-
-Aynı klasörde PowerShell açıp:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\status.ps1
-```
-
-Her şey **[OK]** ve altta **"Her şey yolunda"** yazıyorsa tamamdır.
-
-## 🔧 Discord bir gün yine açılmazsa
-
-Genelde **gerekmez** — arka plandaki gözcü, Discord güncellemelerinden sonra bunu otomatik düzeltir. Yine de olursa:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\fix-discord.ps1
-```
-
-Sonra Discord'u kapatıp tekrar aç.
-
-## 🗑️ Kaldırmak
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\uninstall.ps1
-```
-
-Yaptığı her şeyi geri alır (hosts, DNS, kısayollar, otomatik başlatma).
-
-
 ## 🍎 macOS
 
-macOS sürümü ayrı bir klasörde: **[macos/README.md](macos/README.md)**. Aynı işi ByeDPI + sistem proxy (PAC) ile yapar; hosts/kısayol/gözcü gerekmez.
+### 1) Kur
+Terminal'i aç, klasöre gir, şunu çalıştır:
 
 ```bash
 bash macos/install.sh
 ```
 
-> Android için bu araç uyarlanamaz; orada [ByeByeDPI](https://github.com/romanvht/ByeByeDPI) uygulaması aynı işi (uygulama bazlı VPN modu, root gerekmez) yapar — `config.json` içindeki `byedpi.args` değerini oraya yapıştırabilirsin.
+- **Xcode Command Line Tools** yoksa macOS kurmayı teklif eder. Kurulunca komutu tekrar çalıştır.
+- Parolanı **bir kez** ister (ağ ayarı için). Komutun başına `sudo` **yazma**.
+- Sonda bir **DNS profili** açılır: **Sistem Ayarları → Genel → Aygıt Yönetimi** → "discord-dpi-bridge: DNS over HTTPS" → **Yükle**.
+
+### 2) Bitince
+Discord açıksa **tamamen kapat** (Cmd+Q) ve tekrar aç. Bitti. 🎉
+
+Her açılışta kendiliğinden çalışır. Kısayol veya ayar gerekmez; Discord güncellemeleri bozmaz.
+
+### Kontrol / kaldır
+
+```bash
+bash macos/status.sh      # çalışıyor mu? hepsi [OK] olmalı
+bash macos/uninstall.sh   # her şeyi geri al
+```
+
+> ⚠️ macOS sürümü **gerçek bir Mac'te henüz doğrulanmadı.** Sorun görürsen `status.sh` çıktısıyla [issue aç](https://github.com/egeorcun/discord-dpi-bridge/issues). Ayrıntılar ve seçenekler: **[macos/README.md](macos/README.md)**.
 
 ---
 
-## Ne gerekiyor?
+## 📱 Android?
 
-- **Windows 10 (21H2+) veya Windows 11** (macOS için: [macos/README.md](macos/README.md))
-- Başka **hiçbir şey** — Python vs. gerekmez. Her şey Windows'ta hazır gelen PowerShell ile çalışır.
-- Kurulumda bir kez yönetici izni ister (hosts + DNS ayarı için). Çalışırken hiçbir şey yönetici değildir.
+Bu araç Android'e uyarlanamaz; orada zaten hazır bir uygulama var: **[ByeByeDPI](https://github.com/romanvht/ByeByeDPI)**. Root gerekmez, VPN modunda yalnızca Discord'u seçersin, oyunlara dokunmaz. Bu reponun `config.json` içindeki `byedpi.args` değerini oraya yapıştırabilirsin. DNS için: Ayarlar → Özel DNS → `one.one.one.one`.
 
-## Neyi neden yapıyor? (kısaca)
+---
 
-GoodbyeDPI gibi araçlar engeli bir **çekirdek sürücüsüyle** (`WinDivert`) aşar; Denuvo/EAC gibi anti-cheat'ler bu sürücüyü görünce oyunu açmaz (ARC Raiders'ta "0x1: Yanlış işlev"). Bu araç aynı işi **sürücü olmadan** yapar:
+## Nasıl çalışıyor? (kısaca)
 
-1. **ByeDPI** — engeli kullanıcı seviyesinde aşan yerel proxy (sürücü yok).
-2. **relay.ps1** — Discord'un güncelleyicisini de proxy'den geçiren köprü.
+GoodbyeDPI gibi araçlar engeli **çekirdek sürücüsüyle** (WinDivert) aşar; Denuvo/EAC gibi anti-cheat'ler bu sürücüyü görünce oyunu açmaz. Bu araç aynı işi **sürücü olmadan**, kullanıcı seviyesinde yapar. Çekirdek parça iki sistemde de aynı: [ByeDPI](https://github.com/hufrea/byedpi), yerel bir SOCKS5 proxy.
+
+**Windows**
+1. **ByeDPI** (`ciadpi.exe`) — engeli aşan yerel proxy.
+2. **relay.ps1** — proxy kullanamayan Discord güncelleyicisini de proxy'den geçiren köprü (hosts dosyası ile).
 3. **DNS over HTTPS** — operatörün DNS engelini atlar.
-4. **discord-guard** — Discord güncellenip ayarını bozduğunda otomatik onarır.
+4. **discord-guard** — Discord güncellenip ayarını bozunca otomatik onarır.
 
-Kurulum GoodbyeDPI bulursa onu (senin onayınla) kaldırır; klasörünü silmez, sadece Windows servisini durdurur.
+**macOS**
+1. **ByeDPI** — kaynaktan derlenir, LaunchAgent olarak çalışır.
+2. **PAC dosyası** — yalnızca Discord alanlarını proxy'ye yönlendiren sistem proxy ayarı. macOS'ta Discord da güncelleyicisi de buna uyar; hosts, kısayol ve gözcü gerekmez.
+3. **DNS over HTTPS profili** — operatörün DNS engelini atlar.
+
+Her şey geri alınabilir; `uninstall` betikleri eski ayarları yedekten döndürür.
 
 ---
 
 ## Güvenlik ve doğrulama
 
-- Bu depo/indirme **hiçbir çalıştırılabilir (.exe) dosya taşımaz.** Tek ikili olan `ciadpi.exe` (ByeDPI), kurulumda [ByeDPI'nin resmi sürümünden](https://github.com/hufrea/byedpi/releases) iner. Geri kalan her şey açık, okunabilir metin dosyasıdır.
-- **Antivirüs "PUA/Riskware" derse:** ByeDPI bir engel-aşma aracı olduğu için bazı antivirüsler onu bu kategoriyle işaretler — bu bir virüs tespiti değildir. Windows Defender `ciadpi.exe`'yi silerse: Windows Güvenliği → Koruma geçmişi → **"Cihazda izin ver"**, sonra `install.ps1`'i tekrar çalıştır.
+- Bu depo **hiçbir çalıştırılabilir dosya taşımaz.** Windows'ta `ciadpi.exe` kurulumda [ByeDPI'nin resmi sürümünden](https://github.com/hufrea/byedpi/releases) iner; macOS'ta ByeDPI senin Mac'inde resmi kaynağından derlenir. Geri kalan her şey açık, okunabilir metin dosyasıdır.
+- **Antivirüs "PUA/Riskware" derse:** ByeDPI bir engel-aşma aracı olduğu için bazı antivirüsler onu bu kategoriyle işaretler; bu bir virüs tespiti değildir. Windows Defender `ciadpi.exe`'yi silerse: Windows Güvenliği → Koruma geçmişi → **"Cihazda izin ver"**, sonra `install.ps1`'i tekrar çalıştır.
+- Çalışırken hiçbir şey yönetici/root değildir. Yönetici izni yalnızca kurulumda (hosts, DNS, proxy ayarı) istenir.
 
-**VirusTotal (ByeDPI ikilisi, ByeDPI v0.17.3):**
+**VirusTotal (ByeDPI ikilisi, v0.17.3):**
 `ciadpi.exe` — SHA-256 `eb53ceeeb981cc6735ac24bb1e51e725280b86630e80fdf19ddc4ee4a5b54ef4`
 → https://www.virustotal.com/gui/file/eb53ceeeb981cc6735ac24bb1e51e725280b86630e80fdf19ddc4ee4a5b54ef4
 
@@ -111,15 +132,20 @@ Kurulum GoodbyeDPI bulursa onu (senin onayınla) kaldırır; klasörünü silmez
 | `status.ps1` | `d1f535f6341e13805adbec4919fe8ecfc0ed53673c878348bb9cada9dbf4a703` |
 | `fix-discord.ps1` | `2f195dbca2a222ff97e852f4069ab69f1f98e316f989fe587038bea9053c558e` |
 | `config.json` | `0db3eadc2b76f9d00d2aad67e106180d9845424cbe6ddb4975d24961c6336596` |
+| `macos/install.sh` | `b00f5378f9be1d9b83dc4d47fac06957168cdf3bf3774e1a345fd34c47b4b29e` |
+| `macos/uninstall.sh` | `ad33dda1d1d73622bd9d621c892a5d1e4d3b1ea4c64a06b8074c2c95255082a4` |
+| `macos/status.sh` | `376e64a0148d309e6a85348acb9cba75019c07bfb1e8ca1759b37a0974ff3b9d` |
+| `macos/lib.sh` | `c01577ff6dafad61c06a27df8d6e6b96f99c4a7e4bb0cb663be2ad2cd06e05a3` |
+| `macos/pac-server.py` | `76fe793c7ebfaf3bffcfc53c7032c0866695f95d9c53ddd91280163cb662a57f` |
 
-Doğrulamak için: `Get-FileHash .\dosya -Algorithm SHA256`. Metin dosyalarının hash'i satır sonu ayarına duyarlıdır; en güvenilir doğrulama satır sonundan etkilenmeyen `ciadpi.exe`'dir.
+Windows: `Get-FileHash .\dosya -Algorithm SHA256` · macOS: `shasum -a 256 macos/dosya`. Metin dosyalarının hash'i satır sonu ayarına duyarlıdır; en güvenilir doğrulama `ciadpi.exe`'dir.
 </details>
 
 ## Sınırlar — dürüstçe
 
-- Bu bir **kalıcı çözüm değil, geçici bir yoldur**; Discord kendi yapısını değiştirirse bozulabilir (gözcü çoğu durumu yakalar ama garanti değil).
+- Bu **kalıcı çözüm değil, geçici bir yoldur**; Discord kendi yapısını değiştirirse bozulabilir.
 - Sesli sohbet (UDP) proxy'den geçmez; genelde sorun olmaz ama operatöre göre değişebilir.
-- Varsayılan ayarlar **Türk Telekom**'da doğrulandı. Başka operatörde `config.json` içindeki `byedpi.args`'ı ayarlaman gerekebilir ([ByeDPI](https://github.com/hufrea/byedpi)).
+- Varsayılan ayarlar **Türk Telekom**'da (Windows) doğrulandı. Başka operatörde veya macOS'ta `config.json` içindeki `byedpi.args`'ı ayarlaman gerekebilir ([ByeDPI](https://github.com/hufrea/byedpi)).
 - DPI atlatmanın yasal durumu ülkeye göre değişir; kullanım sorumluluğu kullanıcıya aittir.
 
 ## Teşekkür
@@ -129,8 +155,4 @@ Doğrulamak için: `Get-FileHash .\dosya -Algorithm SHA256`. Metin dosyalarını
 
 ## Lisans
 
-MIT. ByeDPI ayrı lisanslıdır (MIT) ve kurulumda ayrıca indirilir.
-
----
-
-🇬🇧 **English:** see **[README.en.md](README.en.md)**.
+MIT. ByeDPI ayrı lisanslıdır (MIT) ve kurulumda ayrıca indirilir/derlenir.

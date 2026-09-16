@@ -7,6 +7,7 @@
 #
 # Kullanim: bash macos/uninstall.sh [-y] [--keep-dns]
 set -uo pipefail
+# shellcheck source=lib.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 
 YES=0; KEEP_DNS=0
