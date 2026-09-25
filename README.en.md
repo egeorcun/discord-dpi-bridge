@@ -133,7 +133,7 @@ Everything is reversible; the `uninstall` scripts restore the previous settings 
 | `status.ps1` | `d1f535f6341e13805adbec4919fe8ecfc0ed53673c878348bb9cada9dbf4a703` |
 | `fix-discord.ps1` | `2f195dbca2a222ff97e852f4069ab69f1f98e316f989fe587038bea9053c558e` |
 | `config.json` | `0db3eadc2b76f9d00d2aad67e106180d9845424cbe6ddb4975d24961c6336596` |
-| `macos/install.sh` | `192fa3eb86a6a01ba93c4cf1b7eff582ee3950956e97623888ffebfb2f055ef4` |
+| `macos/install.sh` | `278eaf0338421428d398649435725ea38066f8e2d92234265b967cc88aa266dc` |
 | `macos/uninstall.sh` | `0d4179c5fe61640ee31b74c5d5471864a49bff9545e70301b5c2c6cab0c2e2c7` |
 | `macos/status.sh` | `bfcbee809bdde54282bbf46d04a18822dc9b72bba7463c8e91e724e696eeed80` |
 | `macos/lib.sh` | `6770e354f2440755e8fe9568405ff8377ebb13a6447631d49a9fb4e472879dee` |

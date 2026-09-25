@@ -113,22 +113,42 @@ if [ -x "$BYEDPI_BIN" ] && [ "$have_ver" = "$want_tag" ]; then
   ok "ByeDPI zaten derli ($have_ver)"
 else
   info "ByeDPI $want_tag derlenecek"
+  # Derleme neden launchd uzerinden? macOS 26'da Gatekeeper "provenance" takibi yapar: internetten
+  # inen bir uygulamanin (terminal emulatoru, editor, IDE) urettigi calistirilabilir dosya bu isareti
+  # miras alir ve cekirdek tarafindan aninda oldurulur (SIGKILL, "ASP: Security policy would not allow
+  # process"). launchd'in baslattigi sureclerin urettigi dosyalarda bu isaret olusmaz. Terminal.app'ten
+  # kurulumda fark etmez; Warp/iTerm/VSCode gibi indirilmis uygulamalarda ByeDPI hic calismaz.
   build_byedpi() {
-    local src="$APP_DIR/byedpi/src"
-    rm -rf "$src"
-    git -c advice.detachedHead=false clone -q --depth 1 --branch "$want_tag" https://github.com/hufrea/byedpi "$src"
-    if ! ( cd "$src" && make -s CC=cc ) > "$LOG_DIR/build.log" 2>&1; then
-      fail "derleme basarisiz; ayrintilar: $LOG_DIR/build.log"
-      tail -20 "$LOG_DIR/build.log"
+    local src="$APP_DIR/byedpi/src" script marker label="$LABEL_PREFIX.build"
+    script="$(mktemp -t discord-dpi-bridge-build)"; marker="$script.done"
+    cat > "$script" <<EOS
+#!/bin/bash
+set -e
+rm -rf "$src"
+git -c advice.detachedHead=false clone -q --depth 1 --branch "$want_tag" https://github.com/hufrea/byedpi "$src"
+cd "$src" && make -s CC=cc
+cp "$src/ciadpi" "$BYEDPI_BIN"
+chmod 755 "$BYEDPI_BIN"
+codesign -s - -f "$BYEDPI_BIN" >/dev/null 2>&1 || true   # ad-hoc imza (Apple Silicon icin)
+printf '%s\n' "$want_tag" > "$BYEDPI_VER"
+rm -rf "$src"
+echo ok > "$marker"
+EOS
+    chmod +x "$script"
+    rm -f "$marker"
+    launchctl remove "$label" >/dev/null 2>&1 || true
+    launchctl submit -l "$label" -o "$LOG_DIR/build.log" -e "$LOG_DIR/build.log" -- /bin/bash "$script"
+    for _ in $(seq 150); do [ -f "$marker" ] && break; sleep 2; done
+    launchctl remove "$label" >/dev/null 2>&1 || true
+    rm -f "$script"
+    if [ ! -f "$marker" ]; then
+      fail "derleme basarisiz/zaman asimi; ayrintilar: $LOG_DIR/build.log"
+      tail -20 "$LOG_DIR/build.log" 2>/dev/null
       return 1
     fi
-    cp "$src/ciadpi" "$BYEDPI_BIN"
-    chmod 755 "$BYEDPI_BIN"
-    codesign -s - -f "$BYEDPI_BIN" >/dev/null 2>&1 || true   # ad-hoc imza (Apple Silicon icin)
-    printf '%s\n' "$want_tag" > "$BYEDPI_VER"
-    rm -rf "$src"
+    rm -f "$marker"
   }
-  act "git clone + make -> $BYEDPI_BIN" build_byedpi
+  act "git clone + make (launchd) -> $BYEDPI_BIN" build_byedpi
   if [ "$DRY" -eq 0 ]; then
     if "$BYEDPI_BIN" --help >/dev/null 2>&1 || "$BYEDPI_BIN" -h >/dev/null 2>&1; then
       ok "ByeDPI $want_tag hazir"

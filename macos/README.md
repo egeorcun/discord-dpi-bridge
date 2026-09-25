@@ -53,7 +53,7 @@ Yaptığı her şeyi geri alır: LaunchAgent'lar, güncelleyici köprüsü ve `/
 ## Neyi neden yapıyor? (kısaca)
 macOS'ta Discord (Electron) **sistem proxy ayarına uyar**, bu yüzden Windows'taki kısayol/gözcü parçalarına gerek kalmaz. Ama Discord'un **güncelleyicisi** (Rust) proxy/PAC ayarını okumaz; onun için Windows'taki hosts + köprü yöntemi kullanılır:
 
-1. **ByeDPI** kaynaktan derlenir ve kullanıcı seviyesinde bir **LaunchAgent** olarak çalışır (SOCKS5 `127.0.0.1:1080`).
+1. **ByeDPI** kaynaktan derlenir (Gatekeeper'ın provenance engeline takılmamak için derleme launchd üzerinden yapılır) ve kullanıcı seviyesinde bir **LaunchAgent** olarak çalışır (SOCKS5 `127.0.0.1:1080`).
 2. Yalnızca Discord alanlarını bu proxy'ye yönlendiren bir **PAC dosyası** üretilir ve `127.0.0.1:18080`'den sunulur (Chromium `file://` PAC kabul etmez).
 3. `networksetup` ile tüm ağ servislerinin (Wi-Fi, Ethernet) **otomatik proxy yapılandırması** bu PAC'e ayarlanır.
 4. **Güncelleyici köprüsü:** `updates.discord.com`, `stable.dl2.discordapp.net`, `dl.discordapp.net` `/etc/hosts` ile `127.0.0.1`'e çevrilir. `relay.py` bir **LaunchDaemon** olarak `127.0.0.1:443`'ü dinler, TLS'teki alan adına (SNI) bakar ve yalnızca bu alanları ByeDPI üzerinden gerçek sunucuya taşır. TLS'e dokunmaz; sertifika doğrulaması Discord'da kalır.
@@ -73,6 +73,7 @@ Kurulum klasörü: `~/Library/Application Support/discord-dpi-bridge/` (ByeDPI, 
 `config.json` içindeki `macos` bölümünden proxy'ye giden alan adları (`proxy_domains`), köprüden geçen güncelleyici alanları (`relay_hosts`), PAC portu ve macOS'a özel ByeDPI parametreleri (`byedpi_args`, boşsa `byedpi.args` kullanılır) değiştirilebilir; sonra `install.sh`'i tekrar çalıştır.
 
 ## Sorun giderme
+- **ByeDPI hiç çalışmıyor (port 1080 dinlenmiyor, `byedpi.log` boş):** macOS 26, internetten inen bir uygulamanın (Warp, iTerm, VSCode, Claude Code...) ürettiği çalıştırılabilir dosyayı "provenance" işaretiyle damgalar ve çekirdek onu anında öldürür (`ASP: Security policy would not allow process`). `install.sh` bu yüzden derlemeyi launchd üzerinden yapar; işaret orada oluşmaz. Eski kurulumdan kalma bozuk ikili varsa yeniden derlenmesi için önce `echo v0.0.0 > "$HOME/Library/Application Support/discord-dpi-bridge/byedpi/version.txt"` çalıştır, sonra kurulumu tekrarla.
 - **`status.sh` "discord.com (SOCKS5 üzerinden)" HATA veriyor:** ByeDPI parametreleri operatörüne uymuyor. `config.json → byedpi.args`'ı [ByeDPI README](https://github.com/hufrea/byedpi)'sine göre değiştir (macOS'ta `--disorder` davranışı Windows'tan farklı olabilir; `--split 1 --disorder 1 --auto=torst --tlsrec 1+s` ile başla). Sonra `bash macos/install.sh -y`.
 - **Discord "Update failed — retrying" döngüsünde:** `status.sh`'te "Güncelleyici köprüsü" ve "güncelleme sunucusu (relay üzerinden)" satırlarına bak; HATA varsa `bash macos/install.sh -y`. Log: `~/Library/Application Support/discord-dpi-bridge/logs/relay.log`. Güncelleyicinin kendi logu: `~/Library/Application Support/discord/logs/Discord_updater_rCURRENT.log` (yeni bir alan adı görürsen `config.json → macos.relay_hosts`'a ekle).
 - **DoH profili yüklenmiyor:** `open ~/Library/Application\ Support/discord-dpi-bridge/discord-dpi-bridge-doh.mobileconfig` ve Sistem Ayarları'ndan yükle.
@@ -89,7 +90,7 @@ Kurulum klasörü: `~/Library/Application Support/discord-dpi-bridge/` (ByeDPI, 
 
 | Dosya | SHA-256 |
 |---|---|
-| `install.sh` | `192fa3eb86a6a01ba93c4cf1b7eff582ee3950956e97623888ffebfb2f055ef4` |
+| `install.sh` | `278eaf0338421428d398649435725ea38066f8e2d92234265b967cc88aa266dc` |
 | `uninstall.sh` | `0d4179c5fe61640ee31b74c5d5471864a49bff9545e70301b5c2c6cab0c2e2c7` |
 | `status.sh` | `bfcbee809bdde54282bbf46d04a18822dc9b72bba7463c8e91e724e696eeed80` |
 | `lib.sh` | `6770e354f2440755e8fe9568405ff8377ebb13a6447631d49a9fb4e472879dee` |
